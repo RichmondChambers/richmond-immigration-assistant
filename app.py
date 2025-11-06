@@ -163,3 +163,23 @@ if submit and enquiry:
     st.subheader("📩 Email-Ready Version")
     st.text_area("Formatted for email", value=email_version, height=400)
 
+st.text_area("Formatted for email", value=email_version, height=400)
+
+st.markdown(
+    f"""
+    <button onclick="navigator.clipboard.writeText(`{email_version}`)"
+            style="
+                margin-top: 10px;
+                padding: 8px 16px;
+                background-color: #0066cc;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+            ">
+        📋 Copy to Clipboard
+    </button>
+    """,
+    unsafe_allow_html=True
+)
+
