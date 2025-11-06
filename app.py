@@ -159,22 +159,3 @@ if submit and enquiry:
     st.success("Response generated.")
     st.text_area("Draft Email", value=reply, height=600)
    
-    import json
-    st.markdown(
-        f"""
-        <button onclick="navigator.clipboard.writeText({json.dumps(email_version)})"
-                style="
-                    margin-top: 10px;
-                    padding: 8px 16px;
-                    background-color: #0066cc;
-                    color: white;
-                    border: none;
-                    border-radius: 4px;
-                    cursor: pointer;
-                ">
-            📋 Copy to Clipboard
-        </button>
-        """,
-        unsafe_allow_html=True
-    )
-
