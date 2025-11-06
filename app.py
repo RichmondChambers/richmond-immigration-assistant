@@ -166,6 +166,7 @@ if submit and enquiry:
 st.text_area("Formatted for email", value=email_version, height=400)
 
  # Copy button
+       import json
         st.markdown(
             f"""
             <button onclick="navigator.clipboard.writeText({json.dumps(email_version)})"
@@ -183,5 +184,3 @@ st.text_area("Formatted for email", value=email_version, height=400)
             """,
             unsafe_allow_html=True
         )
-
-
