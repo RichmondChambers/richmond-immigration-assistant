@@ -6,7 +6,6 @@ import numpy as np
 import re
 import json
 import streamlit.components.v1 as components
-import markdown
 
 def format_for_email(response_text):
     """
