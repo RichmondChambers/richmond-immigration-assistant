@@ -122,13 +122,13 @@ Dear {name},
 
 Thank you for contacting Richmond Chambers Immigration Barristers.
 
-YOUR IMMIGRATION MATTER
+Your Immigration Matter
 
 I understand from your enquiry that {question.strip()}
 
-Conclude this section by inserting this heading:
 
-INITIAL THOUGHTS
+
+Initial Thoughts
 
 Write this section in well‑structured prose (no bullet points here).  
 
@@ -147,7 +147,7 @@ For this section:
 
 Conclude this section by gently encouraging the prospect to arrange an initial consultation for personalised legal advice. You must not use the word 'strongly' in the concluding sentence.
 
-HOW WE CAN ASSIST
+How We Can Assist
 
 At Richmond Chambers, we offer a range of professional services, including:
 
@@ -163,7 +163,7 @@ Based on your knowledge centre or, if not available, use the following as fallba
 - Representing clients in appeals and administrative reviews;  
 - (Add any additional service tailored to scenario).
 
-NEXT STEPS
+Next Steps
 
 Include the following standard closing text:
 
