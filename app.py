@@ -161,20 +161,27 @@ if submit and enquiry:
         st.text_area("Draft Email", value=reply, height=600)
 
         # Copy to Clipboard Button
-        st.markdown(
-        f"""
-        <button onclick="navigator.clipboard.writeText({json.dumps(reply)})"
-                style="
-                    margin-top: 10px;
-                    padding: 8px 16px;
-                    background-color: #0066cc;
-                    color: white;
-                    border: none;
-                    border-radius: 4px;
-                    cursor: pointer;
-                ">
-            📋 Copy to Clipboard
-        </button>
-        """,
-        unsafe_allow_html=True
-    )
+       st.markdown(
+    f"""
+    <textarea id="copyTarget" style="display:none;">{reply}</textarea>
+    <button onclick="copyToClipboard()"
+            style="
+                margin-top: 10px;
+                padding: 8px 16px;
+                background-color: #0066cc;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+            ">
+        📋 Copy to Clipboard
+    </button>
+    <script>
+    function copyToClipboard() {{
+        var copyText = document.getElementById("copyTarget");
+        navigator.clipboard.writeText(copyText.value);
+    }}
+    </script>
+    """,
+    unsafe_allow_html=True
+)
