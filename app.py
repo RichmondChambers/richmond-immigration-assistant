@@ -142,7 +142,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.markdown("Enter a new enquiry below to generate an initial thoughts email.")
+st.markdown("Enter a new enquiry below to generate a first draft of your initial thoughts email.")
 
 with st.form("query_form"):
     enquiry = st.text_area("Client Enquiry", height=250)
