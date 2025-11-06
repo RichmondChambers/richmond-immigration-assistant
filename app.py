@@ -6,6 +6,7 @@ import numpy as np
 import re
 import json
 import streamlit.components.v1 as components
+from markdown import markdown
 
 def format_for_email(response_text):
     """
@@ -209,39 +210,50 @@ if submit and enquiry:
         st.text_area("Draft Email", value=reply, height=600)
 
 # ✅ Only render this after 'reply' is created
-        components.html(
-            f"""
-            <style>
-            .copy-button {{
-                margin-top: 10px;
-                padding: 8px 16px;
-                background-color: #2e2e2e;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                cursor: pointer;
-                transition: background-color 0.2s ease, transform 0.1s ease;
-            }}
-            .copy-button:hover {{
-                background-color: #4a4a4a4;
-            }}
-            .copy-button:active {{
-                background-color: #3a3a3a;
-                transform: scale(0.98);
-            }}
-            </style>
+html_reply = markdown(reply)  # Convert Markdown to HTML
 
-            <textarea id="copyTarget" style="display:none;">{json.dumps(reply)}</textarea>
+components.html(
+    f"""
+    <style>
+    .copy-button {{
+        margin-top: 10px;
+        padding: 8px 16px;
+        background-color: #2e2e2e;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.2s ease, transform 0.1s ease;
+    }}
+    .copy-button:hover {{
+        background-color: #4a4a4a;
+    }}
+    .copy-button:active {{
+        background-color: #3a3a3a;
+        transform: scale(0.98);
+    }}
+    </style>
 
-            <button class="copy-button" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+    <button class="copy-button" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
 
-            <script>
-            function copyToClipboard() {{
-                var copyText = document.getElementById("copyTarget");
-                navigator.clipboard.writeText(copyText.value.replace(/^"(.*)"$/, '$1'));
-            }}
-            </script>
-            """,
-            height=100,
-            scrolling=False
-        )
+    <script>
+    async function copyToClipboard() {{
+        const htmlContent = `{html_reply.replace("`", "\\`")}`;
+        const plainText = `{reply.replace("`", "\\`")}`;
+
+        const blobHtml = new Blob([htmlContent], {{ type: 'text/html' }});
+        const blobText = new Blob([plainText], {{ type: 'text/plain' }});
+
+        const clipboardItem = new ClipboardItem({{
+            'text/html': blobHtml,
+            'text/plain': blobText
+        }});
+
+        await navigator.clipboard.write([clipboardItem]);
+        alert("Formatted text copied! Paste into Gmail or Google Docs to retain formatting.");
+    }}
+    </script>
+    """,
+    height=120,
+    scrolling=False
+)
