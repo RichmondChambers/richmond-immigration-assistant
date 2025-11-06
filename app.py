@@ -164,6 +164,7 @@ if submit and enquiry:
 st.markdown(
     f"""
     <textarea id="copyTarget" style="display:none;">{reply}</textarea>
+
     <button onclick="copyToClipboard()"
             style="
                 margin-top: 10px;
@@ -176,6 +177,7 @@ st.markdown(
             ">
         📋 Copy to Clipboard
     </button>
+
     <script>
     function copyToClipboard() {{
         var copyText = document.getElementById("copyTarget");
