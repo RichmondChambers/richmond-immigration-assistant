@@ -162,7 +162,7 @@ if submit and enquiry:
         st.text_area("Draft Email", value=reply, height=600)
 
 # 📋 Copy to Clipboard button with hover/active styling
- components.html(
+components.html(
         f"""
         <style>
         .copy-button {{
