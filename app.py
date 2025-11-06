@@ -209,37 +209,54 @@ if submit and enquiry:
         st.success("Response generated.")
         st.text_area("Draft Email", value=reply, height=600)
 
-# Convert AI reply (Markdown) to HTML for Gmail / Google Docs
-md = MarkdownIt()  # Create Markdown parser instance
-html_reply = md.render(reply)  # Convert Markdown → HTML
+        # ✅ Convert Markdown reply to HTML
+        md = MarkdownIt()  # Instantiate parser before using it
+        html_reply = md.render(reply)  # Convert Markdown → HTML
 
-# ✅ Only render this after 'reply' is created
-md = MarkdownIt()  # Create a Markdown parser instance
-html_reply = md.render(reply)  # Convert Markdown → HTML
+        # ✅ Copy-to-clipboard button
+        components.html(
+            f"""
+            <style>
+            .copy-button {{
+                margin-top: 10px;
+                padding: 8px 16px;
+                background-color: #2e2e2e;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                transition: background-color 0.2s ease, transform 0.1s ease;
+            }}
+            .copy-button:hover {{
+                background-color: #4a4a4a;
+            }}
+            .copy-button:active {{
+                background-color: #3a3a3a;
+                transform: scale(0.98);
+            }}
+            </style>
 
-components.html(
-    f"""
-    <button class="copy-button" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+            <button class="copy-button" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
 
-    <script>
-    async function copyToClipboard() {{
-        const htmlContent = `{html_reply.replace("`", "\\`")}`;
-        const plainText = `{reply.replace("`", "\\`")}`;
+            <script>
+            async function copyToClipboard() {{
+                const htmlContent = `{html_reply.replace("`", "\\`")}`;
+                const plainText = `{reply.replace("`", "\\`")}`;
 
-        const blobHtml = new Blob([htmlContent], {{ type: 'text/html' }});
-        const blobText = new Blob([plainText], {{ type: 'text/plain' }});
+                const blobHtml = new Blob([htmlContent], {{ type: 'text/html' }});
+                const blobText = new Blob([plainText], {{ type: 'text/plain' }});
 
-        const clipboardItem = new ClipboardItem({{
-            'text/html': blobHtml,
-            'text/plain': blobText
-        }});
+                const clipboardItem = new ClipboardItem({{
+                    'text/html': blobHtml,
+                    'text/plain': blobText
+                }});
 
-        await navigator.clipboard.write([clipboardItem]);
-        alert("Formatted text copied! Paste into Gmail or Google Docs to retain formatting.");
-    }}
-    </script>
-    """,
-    height=120,
-    scrolling=False
-)
+                await navigator.clipboard.write([clipboardItem]);
+                alert("Formatted text copied! Paste into Gmail or Google Docs to retain formatting.");
+            }}
+            </script>
+            """,
+            height=120,
+            scrolling=False
+        )
 
