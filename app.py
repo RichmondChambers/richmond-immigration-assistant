@@ -126,7 +126,7 @@ Kind regards,
     return prompt
 
 # --- Streamlit App UI ---
-st.title("Richmond Chambers Immigration Assistant")
+st.title("RC Immigration Assistant")
 
 st.markdown("Enter a client enquiry below to generate a structured response based on UK immigration law sources.")
 
