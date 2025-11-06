@@ -7,12 +7,16 @@ import re
 
 from PIL import Image
 
-# Load and center the logo
 logo = Image.open("assets/logo.png")
 
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
-    st.image(logo, width=150)
+st.markdown(
+    """
+    <div style="text-align: center; padding-bottom: 10px;">
+        <img src="https://raw.githubusercontent.com/RichmondChambers/richmond-immigration-assistant/main/assets/logo.png" width="200">
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 # --- Load API Key securely ---
 openai.api_key = st.secrets["OPENAI_API_KEY"]
