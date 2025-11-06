@@ -10,7 +10,7 @@ st.logo("assets/logo.png", size="medium", link="https://richmondchambers.com")
 st.markdown(
     """
     <div style='text-align: center; padding-bottom: 10px;'>
-        <img src='assets/logo.png' width='500'/>
+        <img src='assets/logo.png' width='250'/>
     </div>
     """,
     unsafe_allow_html=True
