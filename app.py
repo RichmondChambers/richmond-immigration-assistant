@@ -5,6 +5,7 @@ import pickle
 import numpy as np
 import re
 import json
+import streamlit.components.v1 as components
 
 def format_for_email(response_text):
     """
@@ -160,45 +161,43 @@ if submit and enquiry:
         st.success("Response generated.")
         st.text_area("Draft Email", value=reply, height=600)
 
-# Copy to Clipboard Button
-import streamlit.components.v1 as components
-
-components.html(
-    f"""
-    <textarea id="copyTarget" style="display:none;">{reply}</textarea>
-
-    <button onclick="copyToClipboard()"
-            style="
-                margin-top: 10px;
-                padding: 8px 16px;
-                background-color: #009fdf;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                cursor: pointer;
-                transition: background-color 0.2s ease, transform 0.1s ease;
-            
-            .copy-button:hover {
+# 📋 Copy to Clipboard button with hover/active styling
+ components.html(
+            f"""
+            <style>
+            .copy-button {{
+              margin-top: 10px;
+              padding: 8px 16px;
+              background-color: #0066cc;
+              color: white;
+              border: none;
+              border-radius: 4px;
+              cursor: pointer;
+              transition: background-color 0.2s ease, transform 0.1s ease;
+            }}
+            .copy-button:hover {{
               background-color: #0055aa;
-            }
-            .copy-button:active {
+            }}
+            .copy-button:active {{
               background-color: #004488;
               transform: scale(0.98);
-            }
+            }}
             </style>
 
-<textarea id="copyTarget" style="display:none;">{reply}</textarea>
+            <textarea id="copyTarget" style="display:none;">{json.dumps(reply)}</textarea>
 
-<button class="copy-button" onclick="copyToClipboard()">
-        📋 Copy to Clipboard
-    </button>
+            <button class="copy-button" onclick="copyToClipboard()">
+              📋 Copy to Clipboard
+            </button>
 
-    <script>
-    function copyToClipboard() {{
-        var copyText = document.getElementById("copyTarget");
-        navigator.clipboard.writeText(copyText.value);
-    }}
-    </script>
-    """,
-    height=100
-)
+            <script>
+            function copyToClipboard() {{
+              var copyText = document.getElementById("copyTarget");
+              navigator.clipboard.writeText(copyText.value.replace(/^"(.*)"$/, '$1'));
+            }}
+            </script>
+            """,
+            height=100,
+            scrolling=False
+        )
+
