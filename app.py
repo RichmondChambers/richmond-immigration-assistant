@@ -209,6 +209,10 @@ if submit and enquiry:
         st.success("Response generated.")
         st.text_area("Draft Email", value=reply, height=600)
 
+# Convert AI reply (Markdown) to HTML for Gmail / Google Docs
+md = MarkdownIt()  # Create Markdown parser instance
+html_reply = md.render(reply)  # Convert Markdown → HTML
+
 # ✅ Only render this after 'reply' is created
 md = MarkdownIt()  # Create a Markdown parser instance
 html_reply = md.render(reply)  # Convert Markdown → HTML
