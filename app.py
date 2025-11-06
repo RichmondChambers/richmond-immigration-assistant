@@ -159,7 +159,7 @@ if submit and enquiry:
     st.success("Response generated.")
     st.text_area("Draft Email", value=reply, height=600)
     # Create email-friendly version
-email_version = format_for_email(reply)
-st.subheader("📩 Email-Ready Version")
-st.text_area("Formatted for email", value=email_version, height=400)
+    email_version = format_for_email(reply)
+    st.subheader("📩 Email-Ready Version")
+    st.text_area("Formatted for email", value=email_version, height=400)
 
