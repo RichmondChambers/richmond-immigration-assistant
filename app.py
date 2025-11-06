@@ -166,11 +166,11 @@ NEXT STEPS
 
 Include the following standard closing text:
 
-If you would like to discuss your immigration matter in more detail, I would be pleased to advise you further at an initial consultation meeting. At this meeting I will take further instructions from you, advise you in detail as to the requirements of the UK's Immigration Rules and any other relevant guidance or case law, provide you with an assessment of your prospects of success and answer any questions that you may have. Following the meeting you will receive a written summary of my advice.
+If you would like to discuss your immigration matter in more detail, I would be pleased to provide further advice at an initial consultation meeting. During this meeting, I will take detailed instructions from you, explain the relevant requirements of the UK’s Immigration Rules and any applicable guidance or case law, assess the prospects of success in your case, and answer any questions you may have. After the consultation, you will receive a written summary of my advice.
 
-A member of our administration team will be in touch by email shortly with details of all the immigration barristers we have available to advise you at an initial consultation meeting, along with information regarding our professional fees.
+A member of our administration team will contact you by email shortly with details of all the immigration barristers that we have available for an initial consultation, together with information about our professional fees.
 
-We look forward to hopefully having an opportunity to advise you further.
+We look forward to hopefully having an opportunity to assist you further.
 
 Kind regards,
 
