@@ -188,22 +188,14 @@ components.html(
 
         <button class="copy-button" onclick="copyToClipboard()">
             📋 Copy to Clipboard
-        <div id="copySuccess" class="copy-success">✅ Copied to clipboard!</div>
-
-        <script>
-            function copyToClipboard() {{
-                var copyText = document.getElementById("copyTarget");
-                navigator.clipboard.writeText(copyText.value.replace(/^"(.*)"$/, '$1'));
-
-                var msg = document.getElementById("copySuccess");
-                msg.style.display = "block";
-
-                setTimeout(function() {{
-                    msg.style.display = "none";
-                }}, 2000);  // Hide after 2 seconds
-            }}
+       
+       <script>
+        function copyToClipboard() {{
+            var copyText = document.getElementById("copyTarget");
+            navigator.clipboard.writeText(copyText.value.replace(/^"(.*)"$/, '$1'));
+        }}
         </script>
         """,
-        height=120,
+        height=100,
         scrolling=False
     )
