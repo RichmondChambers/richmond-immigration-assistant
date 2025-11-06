@@ -145,7 +145,7 @@ st.markdown(
 st.markdown("Enter a new enquiry below to generate a first draft of your initial thoughts email.")
 
 with st.form("query_form"):
-    enquiry = st.text_area("Client Enquiry", height=250)
+    enquiry = st.text_area("Prospect's Enquiry", height=250)
     submit = st.form_submit_button("Generate Response")
 
 if submit and enquiry:
@@ -161,41 +161,40 @@ if submit and enquiry:
         st.success("Response generated.")
         st.text_area("Draft Email", value=reply, height=600)
 
-# 📋 Copy to Clipboard button with hover/active styling
-components.html(
-        f"""
-        <style>
-        .copy-button {{
-            margin-top: 10px;
-            padding: 8px 16px;
-            background-color: #009fdf;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.2s ease, transform 0.1s ease;
-        }}
-        .copy-button:hover {{
-            background-color: #0055aa;
-        }}
-        .copy-button:active {{
-            background-color: #004488;
-            transform: scale(0.98);
-        }}
-        </style>
+# ✅ Only render this after 'reply' is created
+        components.html(
+            f"""
+            <style>
+            .copy-button {{
+                margin-top: 10px;
+                padding: 8px 16px;
+                background-color: #009fdf;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                transition: background-color 0.2s ease, transform 0.1s ease;
+            }}
+            .copy-button:hover {{
+                background-color: #0055aa;
+            }}
+            .copy-button:active {{
+                background-color: #004488;
+                transform: scale(0.98);
+            }}
+            </style>
 
-        <textarea id="copyTarget" style="display:none;">{json.dumps(reply)}</textarea>
+            <textarea id="copyTarget" style="display:none;">{json.dumps(reply)}</textarea>
 
-        <button class="copy-button" onclick="copyToClipboard()">
-            📋 Copy to Clipboard
-       
-       <script>
-        function copyToClipboard() {{
-            var copyText = document.getElementById("copyTarget");
-            navigator.clipboard.writeText(copyText.value.replace(/^"(.*)"$/, '$1'));
-        }}
-        </script>
-        """,
-        height=100,
-        scrolling=False
-    )
+            <button class="copy-button" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+
+            <script>
+            function copyToClipboard() {{
+                var copyText = document.getElementById("copyTarget");
+                navigator.clipboard.writeText(copyText.value.replace(/^"(.*)"$/, '$1'));
+            }}
+            </script>
+            """,
+            height=100,
+            scrolling=False
+        )
