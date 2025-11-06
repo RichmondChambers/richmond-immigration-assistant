@@ -125,9 +125,11 @@ YOUR IMMIGRATION MATTER
 
 I understand from your enquiry that {question.strip()}
 
+Conclude this section by inserting this heading:
+
 INITIAL THOUGHTS
 
-Write in well‑structured prose (no bullet points here).  
+Write this section in well‑structured prose (no bullet points here).  
 
 Write a detailed and insightful response that demonstrates legal expertise and engages with the specific circumstances described. 
 
