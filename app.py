@@ -129,6 +129,8 @@ I understand from your enquiry that {question.strip()}
 
 Initial Thoughts
 
+This section must starting with the heading **Initial Thoughts**
+
 Write this section in well‑structured prose (no bullet points here).  
 
 Write a detailed and insightful response that demonstrates legal expertise and engages with the specific circumstances described. 
