@@ -5,7 +5,15 @@ import pickle
 import numpy as np
 import re
 
-st.logo("assets/logo.png", size="medium", link="https://richmondchambers.com")
+st.markdown(
+    """
+    <div style='text-align: left;'>
+        <img src='assets/logo.png' width='500'/>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
 
 # --- Load API Key securely ---
 openai.api_key = st.secrets["OPENAI_API_KEY"]
