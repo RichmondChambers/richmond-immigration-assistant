@@ -176,7 +176,20 @@ components.html(
                 border: none;
                 border-radius: 4px;
                 cursor: pointer;
-            ">
+                transition: background-color 0.2s ease, transform 0.1s ease;
+            }
+            .copy-button:hover {
+              background-color: #0055aa;
+            }
+            .copy-button:active {
+              background-color: #004488;
+              transform: scale(0.98);
+            }
+            </style>
+
+<textarea id="copyTarget" style="display:none;">{reply}</textarea>
+
+<button class="copy-button" onclick="copyToClipboard()">
         📋 Copy to Clipboard
     </button>
 
