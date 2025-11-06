@@ -12,7 +12,7 @@ logo = Image.open("assets/logo.png")
 st.markdown(
     """
     <div style="text-align: center; padding-bottom: 10px;">
-        <img src="https://raw.githubusercontent.com/RichmondChambers/richmond-immigration-assistant/main/assets/logo.png" width="100">
+        <img src="https://raw.githubusercontent.com/RichmondChambers/richmond-immigration-assistant/main/assets/logo.png" width="150">
     </div>
     """,
     unsafe_allow_html=True
