@@ -5,6 +5,15 @@ import pickle
 import numpy as np
 import re
 
+def format_for_email(response_text):
+    """
+    Cleans up the AI response so it's suitable for copying into an email.
+    Removes Markdown and extra spacing.
+    """
+    formatted = response_text.replace("**", "")  # remove bold markup
+    formatted = formatted.replace("\n\n", "\n")  # remove extra spacing
+    return formatted.strip()
+
 from PIL import Image
 
 logo = Image.open("assets/logo.png")
@@ -82,13 +91,13 @@ Dear {name},
 
 Thank you for contacting Richmond Chambers Immigration Barristers.
 
-**Your Immigration Matter**
+YOUR IMMIGRATION MATTER
 
 I understand from your enquiry that {question.strip()}
 
 ---
 
-**INITIAL THOUGHTS**
+INITIAL THOUGHTS
 
 Write a detailed and insightful response that demonstrates legal expertise and engages with the specific circumstances described. Identify immigration categories, legal criteria, evidential concerns, and areas where further advice is needed. Show strategic awareness, but remain cautious and grounded in the source material.
 
@@ -96,7 +105,7 @@ Conclude this section by encouraging the prospect to arrange an initial consulta
 
 ---
 
-**HOW WE CAN ASSIST**
+HOW WE CAN ASSIST
 
 Use bullet points. If scope of work examples are not found in the source material, use:
 
@@ -106,7 +115,7 @@ Use bullet points. If scope of work examples are not found in the source materia
 
 ---
 
-**NEXT STEPS**
+NEXT STEPS
 
 Include the following standard closing text:
 
