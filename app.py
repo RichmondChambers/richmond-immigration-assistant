@@ -5,18 +5,14 @@ import pickle
 import numpy as np
 import re
 
-st.markdown(
-    """
-    <div style='text-align: center; padding-bottom: 10px;'>
-        from PIL import Image
+from PIL import Image
 
+# Load and center the logo
 logo = Image.open("assets/logo.png")
-st.image(logo, width=500)
 
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
+    st.image(logo, width=500)
 
 # --- Load API Key securely ---
 openai.api_key = st.secrets["OPENAI_API_KEY"]
