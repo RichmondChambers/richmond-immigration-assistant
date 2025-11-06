@@ -6,7 +6,7 @@ import numpy as np
 import re
 import json
 import streamlit.components.v1 as components
-from markdown import markdown
+from markdown_it import MarkdownIt
 
 def format_for_email(response_text):
     """
@@ -210,7 +210,8 @@ if submit and enquiry:
         st.text_area("Draft Email", value=reply, height=600)
 
 # ✅ Only render this after 'reply' is created
-html_reply = markdown(reply)  # Convert Markdown to HTML
+md = MarkdownIt()  # Create a Markdown parser instance
+html_reply = md.render(reply)  # Convert Markdown → HTML
 
 components.html(
     f"""
