@@ -126,9 +126,12 @@ Kind regards,
     return prompt
 
 # --- Streamlit App UI ---
-st.title("RC Immigration Assistant")
+st.markdown(
+    "<h1 style='text-align: center; font-size: 2.6rem;'>RC Immigration Assistant</h1>",
+    unsafe_allow_html=True
+)
 
-st.markdown("Enter a client enquiry below to generate a structured response based on UK immigration law sources.")
+st.markdown("Enter a new enquiry below to generate an initial thoughts email based on the RC immigration knowledge base.")
 
 with st.form("query_form"):
     enquiry = st.text_area("Client Enquiry", height=250)
