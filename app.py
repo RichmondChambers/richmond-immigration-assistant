@@ -214,26 +214,6 @@ html_reply = markdown(reply)  # Convert Markdown to HTML
 
 components.html(
     f"""
-    <style>
-    .copy-button {{
-        margin-top: 10px;
-        padding: 8px 16px;
-        background-color: #2e2e2e;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: background-color 0.2s ease, transform 0.1s ease;
-    }}
-    .copy-button:hover {{
-        background-color: #4a4a4a;
-    }}
-    .copy-button:active {{
-        background-color: #3a3a3a;
-        transform: scale(0.98);
-    }}
-    </style>
-
     <button class="copy-button" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
 
     <script>
@@ -257,3 +237,4 @@ components.html(
     height=120,
     scrolling=False
 )
+
