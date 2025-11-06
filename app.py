@@ -131,7 +131,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.markdown("Enter a new enquiry below to generate an initial thoughts email based on the RC immigration knowledge base.")
+st.markdown("Enter a new enquiry below to generate an initial thoughts email.")
 
 with st.form("query_form"):
     enquiry = st.text_area("Client Enquiry", height=250)
