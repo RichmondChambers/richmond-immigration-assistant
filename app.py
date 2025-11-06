@@ -176,10 +176,10 @@ if submit and enquiry:
                 transition: background-color 0.2s ease, transform 0.1s ease;
             }}
             .copy-button:hover {{
-                background-color: #e0e0e0;
+                background-color: #f0f0f0;
             }}
             .copy-button:active {{
-                background-color: #e0e0e0;
+                background-color: #f0f0f0;
                 transform: scale(0.98);
             }}
             </style>
