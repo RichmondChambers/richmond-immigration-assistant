@@ -168,7 +168,7 @@ if submit and enquiry:
             .copy-button {{
                 margin-top: 10px;
                 padding: 8px 16px;
-                background-color: #009fdf;
+                background-color: #000000;
                 color: white;
                 border: none;
                 border-radius: 4px;
@@ -176,10 +176,10 @@ if submit and enquiry:
                 transition: background-color 0.2s ease, transform 0.1s ease;
             }}
             .copy-button:hover {{
-                background-color: #cccccc;
+                background-color: #666666;
             }}
             .copy-button:active {{
-                background-color: #bbbbbb;
+                background-color: #444444;
                 transform: scale(0.98);
             }}
             </style>
