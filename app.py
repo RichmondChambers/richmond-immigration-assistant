@@ -5,6 +5,8 @@ import pickle
 import numpy as np
 import re
 
+st.logo("assets/logo.png", size="medium", link="https://richmondchambers.com")
+
 # --- Load API Key securely ---
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
