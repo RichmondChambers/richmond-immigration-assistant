@@ -133,4 +133,3 @@ if submit and enquiry:
         reply = completion.choices[0].message.content
     st.success("Response generated.")
     st.text_area("Draft Email", value=reply, height=600)
-Add Streamlit app
