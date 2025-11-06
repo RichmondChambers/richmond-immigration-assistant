@@ -8,7 +8,11 @@ import re
 st.markdown(
     """
     <div style='text-align: center; padding-bottom: 10px;'>
-        <img src='assets/logo.png' width='500'/>
+        from PIL import Image
+
+logo = Image.open("assets/logo.png")
+st.image(logo, width=500)
+
     </div>
     """,
     unsafe_allow_html=True
