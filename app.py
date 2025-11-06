@@ -177,7 +177,7 @@ components.html(
                 border-radius: 4px;
                 cursor: pointer;
                 transition: background-color 0.2s ease, transform 0.1s ease;
-            }
+            
             .copy-button:hover {
               background-color: #0055aa;
             }
