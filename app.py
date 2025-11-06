@@ -171,7 +171,7 @@ components.html(
             style="
                 margin-top: 10px;
                 padding: 8px 16px;
-                background-color: #0066cc;
+                background-color: #009fdf;
                 color: white;
                 border: none;
                 border-radius: 4px;
