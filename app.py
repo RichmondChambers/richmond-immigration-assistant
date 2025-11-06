@@ -161,7 +161,9 @@ if submit and enquiry:
         st.text_area("Draft Email", value=reply, height=600)
 
 # Copy to Clipboard Button
-st.markdown(
+import streamlit.components.v1 as components
+
+components.html(
     f"""
     <textarea id="copyTarget" style="display:none;">{reply}</textarea>
 
@@ -185,5 +187,5 @@ st.markdown(
     }}
     </script>
     """,
-    unsafe_allow_html=True
+    height=100
 )
