@@ -158,11 +158,7 @@ if submit and enquiry:
         reply = completion.choices[0].message.content
     st.success("Response generated.")
     st.text_area("Draft Email", value=reply, height=600)
-    # Create email-friendly version
-    email_version = format_for_email(reply)
-    st.subheader("📩 Email-Ready Version")
-    st.text_area("Formatted for email", value=email_version, height=400)
-
+   
     import json
     st.markdown(
         f"""
