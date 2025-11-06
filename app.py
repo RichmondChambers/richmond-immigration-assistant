@@ -160,8 +160,8 @@ if submit and enquiry:
         st.success("Response generated.")
         st.text_area("Draft Email", value=reply, height=600)
 
-        # Copy to Clipboard Button
-       st.markdown(
+# Copy to Clipboard Button
+st.markdown(
     f"""
     <textarea id="copyTarget" style="display:none;">{reply}</textarea>
     <button onclick="copyToClipboard()"
