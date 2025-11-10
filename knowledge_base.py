@@ -18,7 +18,7 @@ from PyPDF2 import PdfReader
 # =========================
 SERVICE_ACCOUNT_FILE = "credentials.json"   # path to your service-account JSON
 SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
-FOLDER_ID = "YOUR_DRIVE_FOLDER_ID"          # <---- SET THIS
+FOLDER_ID = "13J-DiERhtS1VWgF2GtZ1wnMfbUzkq6-G"          # <---- SET THIS
 EMBED_MODEL = "text-embedding-3-small"
 
 # Output files (kept the same names your app expects for index/metadata)
