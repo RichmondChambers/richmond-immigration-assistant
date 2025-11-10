@@ -4,3 +4,6 @@ faiss-cpu
 numpy
 pickle-mixin
 PyMuPDF
+google-api-python-client
+google-auth
+PyPDF2
