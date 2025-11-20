@@ -37,20 +37,26 @@ openai.api_key = st.secrets["OPENAI_API_KEY"]
 @st.cache_resource
 def load_index_and_metadata():
     """
-    Ensure the FAISS index is up to date with Google Drive, then load it.
-    This runs once per Streamlit server process; when the app restarts or
-    the cache is cleared, it will check Drive again and rebuild if needed.
+    Ensure FAISS index is up to date, then load index, metadata,
+    and read last rebuilt timestamp for UI display.
     """
-    # Check Drive and rebuild index if files changed
     sync_drive_and_rebuild_index_if_needed()
 
     index = faiss.read_index(INDEX_FILE)
     with open(METADATA_FILE, "rb") as f:
         metadata = pickle.load(f)
-    return index, metadata
 
+    # Read the timestamp from drive_index_state.json
+    try:
+        with open("drive_index_state.json", "r") as f:
+            state = json.load(f)
+            last_rebuilt = state.get("last_rebuilt", "Unknown")
+    except Exception:
+        last_rebuilt = "Unknown"
 
-index, metadata = load_index_and_metadata()
+    return index, metadata, last_rebuilt
+
+index, metadata, last_rebuilt = load_index_and_metadata()
 
 # --- Helper: Extract Prospect Name ---
 def extract_prospect_name(enquiry):
@@ -256,6 +262,11 @@ Using only the internal analysis above as your legal basis, please now draft the
 # --- Streamlit App UI ---
 st.markdown(
     "<h1 style='text-align: center; font-size: 2.6rem;'>Initial Thoughts Generator</h1>",
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    f"<p style='color: grey; text-align: center; font-size: 0.9rem;'>Immigration law knowledge last rebuilt from Drive on: <b>{last_rebuilt}</b></p>",
     unsafe_allow_html=True
 )
 
