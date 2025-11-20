@@ -298,7 +298,7 @@ if submit and enquiry:
         st.success("Response generated.")
 
         # 🔹 INTERNAL ANALYSIS FIRST (on top)
-        with st.expander("Internal Legal Analysis (not sent to client)", expanded=False):
+        with st.expander("Internal Legal Analysis (not to be sent to prospect)", expanded=False):
             st.markdown(internal_analysis)
 
         # 🔹 DRAFT EMAIL SECOND (underneath)
