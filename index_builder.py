@@ -1,9 +1,9 @@
-# index_builder.py
-
 import os
 import io
 import json
 import pickle
+import time
+import datetime
 from typing import List, Dict
 
 import numpy as np
@@ -11,7 +11,6 @@ import faiss
 import openai
 import docx
 import PyPDF2
-import time
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -299,8 +298,6 @@ def sync_drive_and_rebuild_index_if_needed():
     previous_state = load_previous_state()
     changed, current_state = have_files_changed(files, previous_state)
 
-  import datetime  # add at the top of the file if not already there
-
 if changed or not os.path.exists(INDEX_FILE) or not os.path.exists(METADATA_FILE):
     rebuild_index_from_drive(files)
 
@@ -311,4 +308,4 @@ if changed or not os.path.exists(INDEX_FILE) or not os.path.exists(METADATA_FILE
     })
     return True
 
-    return False
+return False
