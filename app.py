@@ -4,7 +4,6 @@ import faiss
 import pickle
 import numpy as np
 import re
-import json
 import streamlit.components.v1 as components
 from markdown_it import MarkdownIt
 from index_builder import build_index_from_drive, INDEX_FILE, METADATA_FILE
