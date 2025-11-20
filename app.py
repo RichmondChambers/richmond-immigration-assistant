@@ -5,9 +5,103 @@ import pickle
 import numpy as np
 import re
 import json
+import requests
+import jwt  # from PyJWT
 import streamlit.components.v1 as components
 from markdown_it import MarkdownIt
 from index_builder import sync_drive_and_rebuild_index_if_needed, INDEX_FILE, METADATA_FILE
+
+def google_login():
+    """
+    Require the user to sign in with a Google account and restrict access
+    to @richmondchambers.com email addresses.
+    """
+
+    # 1. If we already have a logged-in user in this session, allow access
+    if "user_email" in st.session_state:
+        return st.session_state["user_email"]
+
+    # 2. Check if Google has redirected back with a ?code=... parameter
+    params = st.experimental_get_query_params()
+    if "code" in params:
+        code = params["code"][0]
+
+        # Exchange the code for tokens
+        token_response = requests.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "code": code,
+                "client_id": st.secrets["GOOGLE_CLIENT_ID"],
+                "client_secret": st.secrets["GOOGLE_CLIENT_SECRET"],
+                "redirect_uri": st.secrets["GOOGLE_REDIRECT_URI"],
+                "grant_type": "authorization_code",
+            },
+        )
+
+        if token_response.status_code != 200:
+            st.error("Authentication with Google failed. Please refresh the page and try again.")
+            st.stop()
+
+        token_data = token_response.json()
+        id_token = token_data.get("id_token")
+
+        if not id_token:
+            st.error("No ID token received from Google. Access cannot be granted.")
+            st.stop()
+
+        # Decode the ID token to get the user's email address.
+        # For simplicity we skip signature verification here.
+        # For a stricter setup, you would verify the token using Google's public keys.
+        try:
+            claims = jwt.decode(id_token, options={"verify_signature": False})
+        except Exception:
+            st.error("Could not decode ID token. Access cannot be granted.")
+            st.stop()
+
+        email = claims.get("email", "")
+        hosted_domain = claims.get("hd", "")  # sometimes set to 'richmondchambers.com'
+
+        # Enforce @richmondchambers.com
+        if email.endswith("@richmondchambers.com") or hosted_domain == "richmondchambers.com":
+            st.session_state["user_email"] = email
+            return email
+        else:
+            st.error("Access is restricted to employees of Richmond Chambers.")
+            st.stop()
+
+    # 3. If we get here, the user is not yet logged in.
+    #    Show a "Sign in with Google" link that starts the OAuth flow.
+    auth_url = (
+        "https://accounts.google.com/o/oauth2/v2/auth"
+        "?response_type=code"
+        f"&client_id={st.secrets['GOOGLE_CLIENT_ID']}"
+        f"&redirect_uri={st.secrets['GOOGLE_REDIRECT_URI']}"
+        "&scope=openid%20email"
+        "&prompt=select_account"
+        "&access_type=offline"
+    )
+
+    st.markdown("### Richmond Chambers – Internal Tool")
+    st.write("Please sign in with a Richmond Chambers Google Workspace account to access this app.")
+    st.markdown(f"[Sign in with Google]({auth_url})")
+
+    # Stop the app here until the user has logged in
+    st.stop()
+
+# --- Load API Key securely ---
+openai.api_key = st.secrets["OPENAI_API_KEY"]
+
+# 🔐 Enforce Google sign-in for @richmondchambers.com
+user_email = google_login()
+
+# Optionally show who is logged in (for debugging)
+# st.write(f"Signed in as: {user_email}")
+
+# --- Load FAISS Index and Metadata ---
+@st.cache_resource
+def load_index_and_metadata():
+    ...
+
 
 def format_for_email(response_text):
     """
