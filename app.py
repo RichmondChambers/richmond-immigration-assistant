@@ -94,14 +94,14 @@ it cannot be assessed on the information available.
 Your task is to analyse the enquiry below and produce a structured internal memorandum
 covering at least the following sections (use these as headings):
 
-1. Key Facts (as derived from the enquiry – summarise concisely)
-2. Legal Issues (the main immigration questions arising)
-3. Relevant Immigration Routes and Legal Framework
-4. Application of Law to the Facts
-5. Evidential Issues and Documentation
-6. Risks, Uncertainties, and Discretionary Factors
-7. Further Information Required
-8. Provisional View (preliminary only, no percentage prospects of success)
+1. Key Facts: (as derived from the enquiry – summarise concisely)
+2. Legal Issues: (the main immigration questions arising)
+3. Relevant Immigration Routes and Legal Framework:
+4. Application of Law to the Facts:
+5. Evidential Issues and Documentation:
+6. Risks, Uncertainties, and Discretionary Factors:
+7. Further Information Required:
+8. Provisional View: (preliminary only, no percentage prospects of success)
 
 In your analysis:
 - Refer to the Immigration Rules, Appendices, and policy documents at the section level
@@ -216,7 +216,7 @@ Draw upon uploaded scope of work documents for examples of services.
 
 Do not use “you” or “your” in the bullet points.
 
-Based on your knowledge centre or, if not available, use the following as fallback:  
+Based on the scopes of work in the internal knowledge centre or, if not available, use the following as fallback:  
 - Preparing and submitting visa applications;  
 - Providing strategic advice on eligibility and evidence;  
 - Representing clients in appeals and administrative reviews;  
@@ -282,7 +282,7 @@ if submit and enquiry:
         st.success("Response generated.")
 
         # 🔹 INTERNAL ANALYSIS FIRST (on top)
-        with st.expander("Internal Legal Analysis (not sent to client)", expanded=True):
+        with st.expander("Internal Legal Analysis (not sent to client)", expanded=False):
             st.markdown(internal_analysis)
 
         # 🔹 DRAFT EMAIL SECOND (underneath)
