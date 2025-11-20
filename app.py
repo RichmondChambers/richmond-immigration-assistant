@@ -187,7 +187,7 @@ Please begin drafting the full email now, following the structure and tone descr
 
 # --- Streamlit App UI ---
 st.markdown(
-    "<h1 style='text-align: center; font-size: 2.6rem;'>RC Immigration Assistant</h1>",
+    "<h1 style='text-align: center; font-size: 2.6rem;'>Initial Thoughts Generator</h1>",
     unsafe_allow_html=True
 )
 
