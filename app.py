@@ -224,7 +224,7 @@ Conclude this section by gently encouraging the prospect to arrange an initial c
 
 How We Can Assist
 
-At Richmond Chambers, we offer a range of professional services, including:
+At Richmond Chambers, our professional services can include:
 
 Use 5 or 6 bullet points here.
 
