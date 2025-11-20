@@ -298,8 +298,8 @@ def sync_drive_and_rebuild_index_if_needed():
     previous_state = load_previous_state()
     changed, current_state = have_files_changed(files, previous_state)
 
-if changed or not os.path.exists(INDEX_FILE) or not os.path.exists(METADATA_FILE):
-    rebuild_index_from_drive(files)
+    if changed or not os.path.exists(INDEX_FILE) or not os.path.exists(METADATA_FILE):
+        rebuild_index_from_drive(files)
 
     # Save new state + timestamp of rebuild
     save_state({
