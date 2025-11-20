@@ -301,11 +301,12 @@ def sync_drive_and_rebuild_index_if_needed():
     if changed or not os.path.exists(INDEX_FILE) or not os.path.exists(METADATA_FILE):
         rebuild_index_from_drive(files)
 
-    # Save new state + timestamp of rebuild
-    save_state({
-        "files": current_state,
-        "last_rebuilt": datetime.datetime.utcnow().isoformat() + "Z"
-    })
-    return True
+        # Save new state + timestamp of rebuild
+        save_state({
+            "files": current_state,
+            "last_rebuilt": datetime.datetime.utcnow().isoformat() + "Z"
+        })
+        return True
 
-return False
+    return False
+
