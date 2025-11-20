@@ -11,6 +11,7 @@ import faiss
 import openai
 import docx
 import PyPDF2
+import time
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -193,18 +194,36 @@ def split_into_chunks(text: str, max_chars: int = 1500, overlap: int = 200):
     return chunks
 
 
-def embed_texts(texts, model="text-embedding-3-small", batch_size=64) -> np.ndarray:
+def embed_texts(texts, model="text-embedding-3-small", batch_size=16) -> np.ndarray:
     """
-    Get embeddings for a list of texts using OpenAI embeddings API.
-    Assumes openai.api_key has already been set in app.py.
+    Get embeddings for a list of texts using OpenAI embeddings API,
+    with basic rate-limit handling.
+
+    - Uses smaller batches (default 16) to reduce tokens per request.
+    - If a RateLimitError is hit, waits a few seconds and retries.
     """
     all_embeddings = []
     for i in range(0, len(texts), batch_size):
         batch = texts[i : i + batch_size]
-        response = openai.embeddings.create(input=batch, model=model)
+
+        while True:
+            try:
+                response = openai.embeddings.create(
+                    input=batch,
+                    model=model,
+                )
+                break  # success, exit the retry loop
+            except openai.RateLimitError as e:
+                # Simple backoff: wait then retry the same batch
+                wait_seconds = 5
+                print(f"[index_builder] Rate limit hit, sleeping {wait_seconds}s and retrying batch {i // batch_size}: {e}")
+                time.sleep(wait_seconds)
+
         for item in response.data:
             all_embeddings.append(item.embedding)
+
     return np.array(all_embeddings, dtype=np.float32)
+
 
 
 def rebuild_index_from_drive(files: List[Dict]):
