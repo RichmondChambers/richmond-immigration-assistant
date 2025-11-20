@@ -71,17 +71,68 @@ def search_index(query, k=5):
     return results
 
 # --- Helper: Build GPT Prompt ---
-def format_prompt(question, sources):
+# --- Helper: Build GPT Prompts (Two-Call Architecture) ---
+
+def build_analysis_prompt(question, sources):
     """
-    Builds a detailed prompt for drafting a prospect-response email
-    by Richmond Chambers Immigration Barristers. Uses only supplied
-    source materials from the internal knowledge centre.
+    First call: ask the model to prepare an internal legal analysis
+    based on the enquiry and the retrieved source material.
+    This is NOT shown to the client.
+    """
+    context = "\n\n---\n\n".join([src["content"] for src in sources])
+
+    prompt = f"""
+You are an experienced UK immigration barrister preparing an internal legal analysis
+for another barrister at Richmond Chambers. This analysis is for internal use only
+and will not be sent to the client.
+
+You must base your analysis strictly on the source material provided from the internal
+knowledge centre. Do not rely on general knowledge outside the sources. If a point
+is not supported or cannot safely be inferred from the source material, say that
+it cannot be assessed on the information available.
+
+Your task is to analyse the enquiry below and produce a structured internal memorandum
+covering at least the following sections (use these as headings):
+
+1. Key Facts (as derived from the enquiry – summarise concisely)
+2. Legal Issues (the main immigration questions arising)
+3. Relevant Immigration Routes and Legal Framework
+4. Application of Law to the Facts
+5. Evidential Issues and Documentation
+6. Risks, Uncertainties, and Discretionary Factors
+7. Further Information Required
+8. Provisional View (preliminary only, no percentage prospects of success)
+
+In your analysis:
+- Refer to the Immigration Rules, Appendices, and policy documents at the section level
+  only (e.g. "Appendix FM", "Appendix Skilled Worker", "Appendix V: Visitor").
+- Apply the relevant legal tests to the facts as described, explaining which requirements
+  appear likely to be met, which may be problematic, and which cannot be assessed.
+- Flag any apparent suitability issues, immigration history concerns, or timing problems.
+- Identify what further evidence or information would be needed before providing firm advice.
+- Use precise, formal legal English suitable for a note between barristers.
+- Avoid generic commentary and focus on specific legal analysis grounded in the sources.
+
+Do NOT draft an email. Do NOT address the client. Do NOT include greetings or sign-offs.
+This is purely an internal legal memorandum.
+
+Prospect's enquiry:
+\"\"\"{question.strip()}\"\"\"
+
+SOURCE MATERIAL (internal knowledge centre – do not quote internal links or paragraph numbers):
+{context}
+"""
+    return prompt
+
+def build_email_prompt(question, analysis):
+    """
+    Second call: turn the internal legal analysis into a structured
+    client-facing 'Initial Thoughts' email.
     """
     name = extract_prospect_name(question)
-    context = "\n\n---\n\n".join([src["content"] for src in sources])
-    
+
     prompt = f"""
-You are a knowledgeable and precise UK immigration legal assistant. You read and analyse enquiries from new prospects and assess them against the UK's Immigration Rules, Home Office caseworker guidance, policy documents, and UK immigration case law. Your primary function is to support a qualified immigration barrister by helping interpret the Immigration Rules and draft well-informed, clearly structured initial response emails to enquiries from potential clients.
+You are a knowledgeable and precise UK immigration legal assistant supporting barristers at Richmond Chambers. You read and analyse enquiries from new prospects and assess them against the UK's Immigration Rules, Home Office caseworker guidance, policy documents, and UK immigration case law. Your primary function is to support a qualified immigration barrister by helping interpret the Immigration Rules and draft well-informed, clearly structured initial response emails to enquiries from potential clients.
 
 Think and write as if you were an experienced UK immigration barrister preparing an initial written note for a colleague. Your analysis must be rigorous, specific to the facts of the enquiry, and closely tied to the legal framework.
 
@@ -115,6 +166,9 @@ Ground all responses in the organisation’s internal knowledge centre.
 Cite legislation, Appendices, and case law only at the section or Appendix level (e.g. “Appendix FM”), avoiding citation at the paragraph or subparagraph level (e.g. “paragraph 12(a)”).
 
 Never provide or imply individualised legal advice under any circumstances. Treat everything as preliminary analysis for information only.
+
+You must NOT invent new legal arguments or routes that are not supported by the internal analysis. If something is not covered in the analysis, you must
+either omit it or explain that it cannot be assessed at this stage.
 
 The overriding objective is to produce measured, accurate, and professionally appropriate responses that reflect the standards of written communication expected from barristers at Richmond Chambers.
 
@@ -182,10 +236,11 @@ Kind regards,
 
 ---
 
-**SOURCE MATERIAL (for reference only – do not cite internal page links or paragraph numbers):**
-{context}
+INTERNAL ANALYSIS (for your reference only – do not quote or reproduce this section in the email):
 
-Please begin drafting the full email now, following the structure and tone described.
+{analysis}
+
+Using only the internal analysis above as your legal basis, please now draft the full email in the required structure and tone. Do not mention that an internal analysis exists.
 """
     return prompt
 
@@ -203,16 +258,85 @@ with st.form("query_form"):
 
 if submit and enquiry:
     with st.spinner("Searching documents and drafting response..."):
+        # Step 1: retrieve relevant documents
         results = search_index(enquiry)
-        prompt = format_prompt(enquiry, results)
-        completion = openai.chat.completions.create(
+
+        # Step 2: first call – internal legal analysis
+        analysis_prompt = build_analysis_prompt(enquiry, results)
+        analysis_completion = openai.chat.completions.create(
             model="gpt-4",
-            messages=[{"role": "user", "content": prompt}],
+            messages=[{"role": "user", "content": analysis_prompt}],
+            temperature=0.2
+        )
+        internal_analysis = analysis_completion.choices[0].message.content
+
+        # Step 3: second call – client-facing email based on the analysis
+        email_prompt = build_email_prompt(enquiry, internal_analysis)
+        email_completion = openai.chat.completions.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": email_prompt}],
             temperature=0.3
         )
-        reply = completion.choices[0].message.content
+        reply = email_completion.choices[0].message.content
+
         st.success("Response generated.")
+
+        # Show the draft email
         st.text_area("Draft Email", value=reply, height=600)
+
+        # (Optional but very useful) – show internal analysis in an expander for chambers use only
+        with st.expander("Internal Legal Analysis (not sent to client)"):
+            st.markdown(internal_analysis)
+
+        # ✅ Convert Markdown reply to HTML for the copy button
+        md = MarkdownIt()
+        html_reply = md.render(reply)
+
+        components.html(
+            f"""
+            <style>
+            .copy-button {{
+                margin-top: 10px;
+                padding: 8px 16px;
+                background-color: #2e2e2e;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                transition: background-color 0.2s ease, transform 0.1s ease;
+            }}
+            .copy-button:hover {{
+                background-color: #4a4a4a;
+            }}
+            .copy-button:active {{
+                background-color: #3a3a3a;
+                transform: scale(0.98);
+            }}
+            </style>
+
+            <button class="copy-button" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+
+            <script>
+            async function copyToClipboard() {{
+                const htmlContent = `{html_reply.replace("`", "\\`")}`;
+                const plainText = `{reply.replace("`", "\\`")}`;
+
+                const blobHtml = new Blob([htmlContent], {{ type: 'text/html' }});
+                const blobText = new Blob([plainText], {{ type: 'text/plain' }});
+
+                const clipboardItem = new ClipboardItem({{
+                    'text/html': blobHtml,
+                    'text/plain': blobText
+                }});
+
+                await navigator.clipboard.write([clipboardItem]);
+                alert("Formatted text copied! Paste into Gmail or Google Docs to retain formatting.");
+            }}
+            </script>
+            """,
+            height=120,
+            scrolling=False
+        )
 
         # ✅ Convert Markdown reply to HTML
         md = MarkdownIt()  # Instantiate parser before using it
