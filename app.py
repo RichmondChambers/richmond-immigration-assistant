@@ -6,7 +6,7 @@ import numpy as np
 import re
 import streamlit.components.v1 as components
 from markdown_it import MarkdownIt
-from index_builder import build_index_from_drive, INDEX_FILE, METADATA_FILE
+from index_builder import sync_drive_and_rebuild_index_if_needed, INDEX_FILE, METADATA_FILE
 
 def format_for_email(response_text):
     """
@@ -37,17 +37,13 @@ openai.api_key = st.secrets["OPENAI_API_KEY"]
 @st.cache_resource
 def load_index_and_metadata():
     """
-    Rebuild the FAISS index from the knowledge folder in Google Drive,
-    then load the index and metadata.
-
-    Because of @st.cache_resource, this runs once per Streamlit session.
-    If you restart the app (or clear cache), it will rebuild again using
-    the latest files in KNOWLEDGE_DIR.
+    Ensure the FAISS index is up to date with Google Drive, then load it.
+    This runs once per Streamlit server process; when the app restarts or
+    the cache is cleared, it will check Drive again and rebuild if needed.
     """
-    # Rebuild index from the Drive-mounted folder
-    build_index_from_drive()
+    # Check Drive and rebuild index if files changed
+    sync_drive_and_rebuild_index_if_needed()
 
-    # Now load the freshly built index + metadata
     index = faiss.read_index(INDEX_FILE)
     with open(METADATA_FILE, "rb") as f:
         metadata = pickle.load(f)
