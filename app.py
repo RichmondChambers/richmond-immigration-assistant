@@ -258,7 +258,7 @@ INTERNAL ANALYSIS (for your reference only – do not quote or reproduce this se
 
 Using only the internal analysis above as your legal basis, please now draft the full email in the required structure and tone. Do not mention that an internal analysis exists.
 """
-    return prompt
+return prompt
 
 # --- Streamlit App UI ---
 st.markdown(
