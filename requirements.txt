@@ -10,3 +10,5 @@ PyPDF2
 google-auth-httplib2
 google-auth-oauthlib
 python-docx
+PyJWT
+requests
