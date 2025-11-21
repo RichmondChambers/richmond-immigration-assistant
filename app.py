@@ -426,7 +426,7 @@ if submit and enquiry:
                     "source": uploaded_file.name
                 })
 
-combined_sources = results + extra_sources
+        combined_sources = results + extra_sources   # ← FIXED indentation
 
         # Step 2: first call – internal legal analysis
         analysis_prompt = build_analysis_prompt(enquiry, combined_sources)
