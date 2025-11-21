@@ -401,6 +401,20 @@ if submit and enquiry:
         st.subheader("Draft Email to Prospect")
         st.text_area("Draft Email", value=reply, height=600)
 
+        st.markdown(
+    """
+    ---  
+    **Professional Responsibility Statement**
+
+    AI-generated content must not be relied upon without human review. Where such
+    content is used, the barrister is responsible for verifying and ensuring the accuracy
+    and legal soundness of that content. AI tools are used solely to support drafting and
+    research; they do not replace the barrister’s independent judgment, analysis, or duty
+    of care.
+    """,
+    unsafe_allow_html=False,
+)
+
         # ✅ Convert Markdown reply to HTML for the copy button
         md = MarkdownIt()
         html_reply = md.render(reply)
