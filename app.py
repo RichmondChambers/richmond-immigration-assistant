@@ -153,6 +153,43 @@ def load_index_and_metadata():
 
 index, metadata, last_rebuilt = load_index_and_metadata()
 
+# --- Helper: Extract Text From Uploaded File ---
+def extract_text_from_uploaded_file(uploaded_file):
+    """
+    Extract text content from an uploaded file.
+    Currently supports .txt directly; for PDF/DOCX you will need the
+    relevant libraries installed (PyPDF2 / python-docx).
+    """
+    name = uploaded_file.name.lower()
+
+    if name.endswith(".txt"):
+        return uploaded_file.read().decode("utf-8", errors="ignore")
+
+    elif name.endswith(".pdf"):
+        try:
+            import PyPDF2
+            reader = PyPDF2.PdfReader(uploaded_file)
+            text = ""
+            for page in reader.pages:
+                text += page.extract_text() or ""
+            return text
+        except Exception:
+            return ""
+
+    elif name.endswith(".docx"):
+        try:
+            import docx
+            doc = docx.Document(uploaded_file)
+            return "\n".join(p.text for p in doc.paragraphs)
+        except Exception:
+            return ""
+
+    # Fallback – try to decode as text
+    try:
+        return uploaded_file.read().decode("utf-8", errors="ignore")
+    except Exception:
+        return ""
+
 # --- Helper: Extract Prospect Name ---
 def extract_prospect_name(enquiry):
     closings = ["regards,", "best,", "sincerely,", "thanks,", "kind regards,"]
@@ -364,6 +401,12 @@ st.markdown(
 
 st.markdown("Paste a new enquiry below to generate a first draft of your initial thoughts email.")
 
+uploaded_file = st.file_uploader(
+    "Optional: upload a document to include in the analysis",
+    type=["pdf", "txt", "docx"],
+    help="For example: a refusal letter, specific guidance extract or blog post."
+)
+
 with st.form("query_form"):
     enquiry = st.text_area("Prospect's Enquiry", height=250)
     submit = st.form_submit_button("Generate Response")
@@ -373,8 +416,20 @@ if submit and enquiry:
         # Step 1: retrieve relevant documents
         results = search_index(enquiry)
 
+        # Optionally add uploaded document as an extra source
+        extra_sources = []
+        if uploaded_file is not None:
+            extra_text = extract_text_from_uploaded_file(uploaded_file)
+            if extra_text and extra_text.strip():
+                extra_sources.append({
+                    "content": extra_text,
+                    "source": uploaded_file.name
+                })
+
+combined_sources = results + extra_sources
+
         # Step 2: first call – internal legal analysis
-        analysis_prompt = build_analysis_prompt(enquiry, results)
+        analysis_prompt = build_analysis_prompt(enquiry, combined_sources)
         analysis_completion = openai.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "user", "content": analysis_prompt}],
