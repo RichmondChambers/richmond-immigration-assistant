@@ -397,9 +397,9 @@ if submit and enquiry:
         with st.expander("Internal Legal Analysis (not to be sent to prospect)", expanded=False):
             st.markdown(internal_analysis)
 
-       # 🔹 DRAFT EMAIL SECOND (underneath)
-       st.subheader("Draft Email to Prospect")
-       st.text_area("Draft Email", value=reply, height=600)
+        # 🔹 DRAFT EMAIL SECOND (underneath)
+        st.subheader("Draft Email to Prospect")
+        st.text_area("Draft Email", value=reply, height=600)
 
         # ✅ Convert Markdown reply to HTML for the copy button
         md = MarkdownIt()
