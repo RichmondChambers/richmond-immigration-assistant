@@ -304,7 +304,7 @@ Write this section in well-structured prose (no bullet points here).
 
 In this section, you must carry out structured legal analysis rather than a generic overview. For this section:
 - Begin with a concise summary (2–4 sentences) of the key facts and immigration objectives emerging from the enquiry.
-- Identify the applicable immigration route or routes (for example, Appendix FM, Skilled Worker route, Global Talent route, Visitor route) and briefly set out the relevant legal framework in narrative form or using bullet poiints.
+- Identify the applicable immigration route or routes (for example, Appendix FM, Skilled Worker route, Global Talent route, Visitor route) and briefly set out the relevant legal framework in narrative form.
 - For each realistically applicable route, apply the legal criteria to the prospect’s circumstances, explaining step-by-step which requirements appear likely to be met, which may be difficult to satisfy, and which cannot be assessed on the current information.
 - Highlight at least two potential eligibility, suitability or evidential issues relevant to the prospect’s specific scenario, including any particular risks or points of concern. Always refers to these as "potential" issues.
 - Identify any areas where further factual information or documentation would be required before a firm view could be reached.
