@@ -402,7 +402,7 @@ st.markdown(
 st.markdown("Paste a new enquiry below to generate a first draft of your initial thoughts email.")
 
 uploaded_file = st.file_uploader(
-    "Optional: upload a document to include in the analysis",
+    "Optional: upload a document to include in the analysis (e.g. a refusal letter, guidance extract or blog post)",
     type=["pdf", "txt", "docx"],
     help="For example: a refusal letter, specific guidance extract or blog post."
 )
