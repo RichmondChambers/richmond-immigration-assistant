@@ -463,18 +463,18 @@ if submit and enquiry:
         # Step 2: first call – internal legal analysis
         analysis_prompt = build_analysis_prompt(enquiry, combined_sources)
         analysis_completion = openai.chat.completions.create(
-            model="gpt-4",
-            messages=[{"role": "user", "content": analysis_prompt}],
-            temperature=0.2
+        model="gpt-5.1",
+        messages=[{"role": "user", "content": analysis_prompt}],
+        temperature=0.2
         )
         internal_analysis = analysis_completion.choices[0].message.content
 
         # Step 3: second call – client-facing email based on the analysis
         email_prompt = build_email_prompt(enquiry, internal_analysis)
         email_completion = openai.chat.completions.create(
-            model="gpt-4",
-            messages=[{"role": "user", "content": email_prompt}],
-            temperature=0.3
+        model="gpt-5.1-chat-latest",  # or gpt-5.1 if you want max rigor in the email too
+        messages=[{"role": "user", "content": email_prompt}],
+        temperature=0.3
         )
         reply = email_completion.choices[0].message.content
 
