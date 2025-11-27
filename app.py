@@ -472,7 +472,7 @@ if submit and enquiry:
         # Step 3: second call – client-facing email based on the analysis
         email_prompt = build_email_prompt(enquiry, internal_analysis)
         email_completion = openai.chat.completions.create(
-        model="gpt-5.1-chat-latest",
+        model="gpt-5.1",
         messages=[{"role": "user", "content": email_prompt}],
         temperature=0.3
         )
