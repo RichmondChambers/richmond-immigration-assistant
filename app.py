@@ -460,10 +460,10 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.markdown("Paste a new enquiry below to generate a first draft of your initial thoughts email. If required, additional instructions may be added to improve the response.")
+st.markdown("Paste a new enquiry below to generate a first draft of your initial thoughts email. Additional instructions may be added to refine the response.")
 
 uploaded_file = st.file_uploader(
-    "Optional: upload a document to include in the analysis (e.g. a refusal letter, guidance extract or blog post)",
+    "Optional: upload a document to include in the analysis.",
     type=["pdf", "txt", "docx"],
     help="For example: a refusal letter, specific guidance extract or blog post."
 )
