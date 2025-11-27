@@ -220,7 +220,8 @@ def search_index(query, k=5):
 # --- Helper: Build GPT Prompt ---
 # --- Helper: Build GPT Prompts (Two-Call Architecture) ---
 
-def build_analysis_prompt(question, sources):
+def build_analysis_prompt(question, sources, additional_instructions=""):
+
     """
     First call: ask the model to prepare an internal legal analysis
     based on the enquiry and the retrieved source material.
@@ -239,6 +240,18 @@ def build_analysis_prompt(question, sources):
 
     context = "\n\n---\n\n".join(formatted_sources)
 
+    # ✅ Build optional extra instructions block (outside the f-string)
+    extra_block = ""
+    if additional_instructions and additional_instructions.strip():
+        extra_block = f"""
+ADDITIONAL INTERNAL DRAFTING INSTRUCTIONS (highest priority):
+\"\"\"{additional_instructions.strip()}\"\"\"
+
+You must follow these additional instructions unless they conflict with the Immigration Rules or the authoritative internal sources. If there is a conflict, explain it in the analysis.
+"""
+
+    # ✅ Insert {extra_block} INSIDE the f-string, right after the enquiry
+    
     prompt = f"""
 You are an experienced UK immigration barrister preparing an internal legal analysis
 for a colleague at Richmond Chambers. This analysis is strictly for internal use only
@@ -300,18 +313,31 @@ Please prepare a structured internal memorandum using the following headings:
 Prospect's enquiry:
 \"\"\"{question.strip()}\"\"\"
 
+{extra_block}
+
 SOURCE MATERIAL (internal knowledge centre – do not quote internal links or paragraph numbers):
 {context}
 
 """
     return prompt
 
-def build_email_prompt(question, analysis):
+def build_email_prompt(question, analysis, additional_instructions=""):
     """
     Second call: convert the internal legal analysis into a polished, client-facing
     'Initial Thoughts' email in the Richmond Chambers style.
     """
     name = extract_prospect_name(question)
+
+    # ✅ Optional extra instructions block for the client email
+    extra_block = ""
+    if additional_instructions and additional_instructions.strip():
+        extra_block = f"""
+ADDITIONAL CLIENT-EMAIL DRAFTING INSTRUCTIONS (highest priority):
+\"\"\"{additional_instructions.strip()}\"\"\"
+
+Follow these instructions unless they conflict with the internal analysis.
+If they conflict, follow the internal analysis and gently note the limitation in the email.
+"""
 
     prompt = f"""
 You are an experienced UK immigration barrister drafting a client-facing initial response email
@@ -324,6 +350,8 @@ Your task:
 - Do NOT introduce any new immigration routes, requirements, or legal tests that are not
   in the internal analysis.
 - Do NOT mention or refer to the existence of internal analysis.
+
+{extra_block}
 
 ## Core Writing Principles (integrated requirements)
 When drafting the email, you must adhere to the following professional standards:
@@ -415,6 +443,7 @@ INTERNAL ANALYSIS (strictly privileged work product; do not quote verbatim):
 
 ```text
 {analysis}
+```
 
 Using only the internal analysis above as your legal basis, please now draft the full email in the required structure and tone. Do not mention that an internal analysis exists.
 """
@@ -441,6 +470,14 @@ uploaded_file = st.file_uploader(
 
 with st.form("query_form"):
     enquiry = st.text_area("Prospect's Enquiry", height=250)
+
+    # NEW optional instructions field (visually matches enquiry)
+    additional_instructions = st.text_area(
+        "Additional Instructions (if any)",
+        height=250,
+        help="Optional: add any extra instructions (tone, focus, routes to emphasise/avoid, etc.)."
+    )
+
     submit = st.form_submit_button("Generate Response")
 
 if submit and enquiry:
@@ -461,7 +498,7 @@ if submit and enquiry:
         combined_sources = results + extra_sources   # ← FIXED indentation
 
         # Step 2: first call – internal legal analysis
-        analysis_prompt = build_analysis_prompt(enquiry, combined_sources)
+        analysis_prompt = build_analysis_prompt(enquiry, combined_sources, additional_instructions)
         analysis_completion = openai.chat.completions.create(
         model="gpt-5.1",
         messages=[{"role": "user", "content": analysis_prompt}],
@@ -470,7 +507,7 @@ if submit and enquiry:
         internal_analysis = analysis_completion.choices[0].message.content
 
         # Step 3: second call – client-facing email based on the analysis
-        email_prompt = build_email_prompt(enquiry, internal_analysis)
+        email_prompt = build_email_prompt(enquiry, internal_analysis, additional_instructions)
         email_completion = openai.chat.completions.create(
         model="gpt-5.1",
         messages=[{"role": "user", "content": email_prompt}],
