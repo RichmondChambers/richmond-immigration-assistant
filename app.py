@@ -474,8 +474,7 @@ if submit and enquiry:
         email_completion = openai.chat.completions.create(
         model="gpt-5.1-chat-latest",
         messages=[{"role": "user", "content": email_prompt}],
-        temperature=0.3,
-        reasoning_effort="none"  # fast, low-cost drafting
+        temperature=0.3
         )
         reply = email_completion.choices[0].message.content
 
