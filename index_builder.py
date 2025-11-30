@@ -8,9 +8,10 @@ from typing import List, Dict
 
 import numpy as np
 import faiss
-import openai
 import docx
 import PyPDF2
+
+from openai import OpenAI
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -28,6 +29,14 @@ STATE_FILE = "drive_index_state.json"  # to detect changes + store timestamps
 
 # ✅ Check Drive at most once per day (global cooldown)
 CHECK_COOLDOWN_SECONDS = 24 * 60 * 60  # 1 day
+
+
+def get_openai_client() -> OpenAI:
+    """
+    Create an OpenAI client using Streamlit secrets.
+    Keeps index_builder aligned with app.py SDK usage.
+    """
+    return OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 
 def get_drive_service():
@@ -190,22 +199,23 @@ def embed_texts(texts, model="text-embedding-3-small", batch_size=16) -> np.ndar
     Get embeddings for a list of texts using OpenAI embeddings API,
     with basic rate-limit handling.
     """
+    client = get_openai_client()
     all_embeddings = []
+
     for i in range(0, len(texts), batch_size):
         batch = texts[i : i + batch_size]
 
         while True:
             try:
-                response = openai.embeddings.create(
+                response = client.embeddings.create(
                     input=batch,
                     model=model,
                 )
                 break
-            except openai.RateLimitError as e:
+            except Exception as e:
+                # Handle rate limits / transient errors generically
                 wait_seconds = 5
-                print(
-                    f"[index_builder] Rate limit hit, sleeping {wait_seconds}s and retrying batch {i // batch_size}: {e}"
-                )
+                print(f"[index_builder] Embedding error, sleeping {wait_seconds}s and retrying: {e}")
                 time.sleep(wait_seconds)
 
         for item in response.data:
@@ -274,6 +284,10 @@ def sync_drive_and_rebuild_index_if_needed():
     rebuild FAISS index and metadata from scratch.
 
     ✅ Debounced: will not check Drive more than once per day globally.
+
+    Returns:
+        True  -> rebuilt now
+        False -> not rebuilt
     """
     previous_state = load_previous_state()
 
@@ -284,14 +298,11 @@ def sync_drive_and_rebuild_index_if_needed():
             last_checked_dt = datetime.datetime.fromisoformat(last_checked.replace("Z", ""))
             age_seconds = (datetime.datetime.utcnow() - last_checked_dt).total_seconds()
             if age_seconds < CHECK_COOLDOWN_SECONDS:
-                # Too soon to re-check Drive
                 return False
         except Exception:
-            # If parsing fails, fall through and re-check Drive
             pass
     # ------------------------
 
-    # Allowed to check Drive now
     files = list_drive_files()
     changed, current_state = have_files_changed(files, previous_state)
 
@@ -307,7 +318,6 @@ def sync_drive_and_rebuild_index_if_needed():
         )
         return True
 
-    # No rebuild, but record that we checked today
     save_state(
         {
             "files": previous_state.get("files", {}),
