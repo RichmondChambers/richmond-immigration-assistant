@@ -1,5 +1,5 @@
 import streamlit as st
-from openai import OpenAI
+import openai
 import faiss
 import pickle
 import numpy as np
@@ -9,22 +9,14 @@ import requests
 import jwt  # from PyJWT
 import streamlit.components.v1 as components
 from markdown_it import MarkdownIt
-from PIL import Image
+from index_builder import sync_drive_and_rebuild_index_if_needed, INDEX_FILE, METADATA_FILE
 
-from index_builder import (
-    sync_drive_and_rebuild_index_if_needed,
-    INDEX_FILE,
-    METADATA_FILE,
-)
-
-# -----------------------------
-# Google OAuth Login
-# -----------------------------
 def google_login():
     """
     Require the user to sign in with a Google account and restrict access
     to @richmondchambers.com email addresses.
     """
+
     # 1. If we already have a logged-in user in this session, allow access
     if "user_email" in st.session_state:
         return st.session_state["user_email"]
@@ -44,7 +36,6 @@ def google_login():
                 "redirect_uri": st.secrets["GOOGLE_REDIRECT_URI"],
                 "grant_type": "authorization_code",
             },
-            timeout=20,
         )
 
         if token_response.status_code != 200:
@@ -60,6 +51,7 @@ def google_login():
 
         # Decode the ID token to get the user's email address.
         # For simplicity we skip signature verification here.
+        # For a stricter setup, you would verify the token using Google's public keys.
         try:
             claims = jwt.decode(id_token, options={"verify_signature": False})
         except Exception:
@@ -67,7 +59,7 @@ def google_login():
             st.stop()
 
         email = claims.get("email", "")
-        hosted_domain = claims.get("hd", "")
+        hosted_domain = claims.get("hd", "")  # sometimes set to 'richmondchambers.com'
 
         # Enforce @richmondchambers.com
         if email.endswith("@richmondchambers.com") or hosted_domain == "richmondchambers.com":
@@ -78,6 +70,7 @@ def google_login():
             st.stop()
 
     # 3. If we get here, the user is not yet logged in.
+    #    Show a "Sign in with Google" link that starts the OAuth flow.
     auth_url = (
         "https://accounts.google.com/o/oauth2/v2/auth"
         "?response_type=code"
@@ -92,24 +85,37 @@ def google_login():
     st.write("Please sign in with a Richmond Chambers Google Workspace account to access this app.")
     st.markdown(f"[Sign in with Google]({auth_url})")
 
+    # Stop the app here until the user has logged in
     st.stop()
 
+# --- Load API Key securely ---
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-# -----------------------------
-# OpenAI client (new SDK style)
-# -----------------------------
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-
-
-# -----------------------------
-# Enforce Google sign-in
-# -----------------------------
+# 🔐 Enforce Google sign-in for @richmondchambers.com
 user_email = google_login()
 
+# Optionally show who is logged in (for debugging)
+# st.write(f"Signed in as: {user_email}")
 
-# -----------------------------
-# Logo + Title
-# -----------------------------
+# --- Load FAISS Index and Metadata ---
+@st.cache_resource
+def load_index_and_metadata():
+    ...
+
+
+def format_for_email(response_text):
+    """
+    Cleans up the AI response so it's suitable for copying into an email.
+    Removes Markdown and extra spacing.
+    """
+    formatted = response_text.replace("**", "")  # remove bold markup
+    formatted = formatted.replace("\n\n", "\n")  # remove extra spacing
+    return formatted.strip()
+
+from PIL import Image
+
+logo = Image.open("assets/logo.png")
+
 st.markdown(
     """
     <div style="text-align: center; padding-bottom: 10px;">
@@ -119,55 +125,21 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+# --- Load API Key securely ---
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-# -----------------------------
-# Index sync/rebuild (ONCE per session)
-# -----------------------------
-def ensure_index_up_to_date_once_per_session():
-    """
-    Run Drive sync/rebuild at most once per Streamlit session.
-    If a rebuild happens, clear the cached loader so new artifacts are read.
-    """
-    if "index_checked_this_session" not in st.session_state:
-        with st.spinner("Syncing Drive and checking index (first load only)..."):
-            try:
-                rebuilt = sync_drive_and_rebuild_index_if_needed()
-            except Exception as e:
-                st.error(f"Drive sync/index rebuild failed: {e}")
-                st.stop()
-
-        st.session_state["index_checked_this_session"] = True
-
-        # If index_builder reports a rebuild, clear cached loader
-        if rebuilt:
-            load_index_and_metadata.clear()
-
-
+# --- Load FAISS Index and Metadata ---
 @st.cache_resource
 def load_index_and_metadata():
     """
-    Load FAISS index and metadata (cached).
-    Also read last rebuilt timestamp for UI display.
+    Ensure FAISS index is up to date, then load index, metadata,
+    and read last rebuilt timestamp for UI display.
     """
-    # Fail fast with a clear message instead of 'hanging'
-    try:
-        index = faiss.read_index(INDEX_FILE)
-    except Exception as e:
-        st.error(
-            f"Could not read FAISS index at '{INDEX_FILE}'. "
-            f"Has the index been built yet?\n\nError: {e}"
-        )
-        st.stop()
+    sync_drive_and_rebuild_index_if_needed()
 
-    try:
-        with open(METADATA_FILE, "rb") as f:
-            metadata = pickle.load(f)
-    except Exception as e:
-        st.error(
-            f"Could not read metadata at '{METADATA_FILE}'. "
-            f"Has the index been built yet?\n\nError: {e}"
-        )
-        st.stop()
+    index = faiss.read_index(INDEX_FILE)
+    with open(METADATA_FILE, "rb") as f:
+        metadata = pickle.load(f)
 
     # Read the timestamp from drive_index_state.json
     try:
@@ -179,28 +151,14 @@ def load_index_and_metadata():
 
     return index, metadata, last_rebuilt
 
-
-ensure_index_up_to_date_once_per_session()
 index, metadata, last_rebuilt = load_index_and_metadata()
 
-
-# -----------------------------
-# Helpers
-# -----------------------------
-def format_for_email(response_text):
-    """
-    Cleans up the AI response so it's suitable for copying into an email.
-    Removes Markdown and extra spacing.
-    """
-    formatted = response_text.replace("**", "")
-    formatted = formatted.replace("\n\n", "\n")
-    return formatted.strip()
-
-
+# --- Helper: Extract Text From Uploaded File ---
 def extract_text_from_uploaded_file(uploaded_file):
     """
     Extract text content from an uploaded file.
-    Supports .txt directly; PDFs/DOCX if libs are installed.
+    Currently supports .txt directly; for PDF/DOCX you will need the
+    relevant libraries installed (PyPDF2 / python-docx).
     """
     name = uploaded_file.name.lower()
 
@@ -226,12 +184,13 @@ def extract_text_from_uploaded_file(uploaded_file):
         except Exception:
             return ""
 
+    # Fallback – try to decode as text
     try:
         return uploaded_file.read().decode("utf-8", errors="ignore")
     except Exception:
         return ""
 
-
+# --- Helper: Extract Prospect Name ---
 def extract_prospect_name(enquiry):
     closings = ["regards,", "best,", "sincerely,", "thanks,", "kind regards,"]
     for closing in closings:
@@ -243,12 +202,12 @@ def extract_prospect_name(enquiry):
         return match.group(1)
     return "[Prospect]"
 
-
+# --- Helper: Embed Query ---
 def get_embedding(text, model="text-embedding-3-small"):
-    result = client.embeddings.create(input=[text], model=model)
+    result = openai.embeddings.create(input=[text], model=model)
     return result.data[0].embedding
 
-
+# --- Helper: Search Index ---
 def search_index(query, k=5):
     query_embedding = get_embedding(query)
     distances, indices = index.search(np.array([query_embedding], dtype=np.float32), k)
@@ -258,18 +217,30 @@ def search_index(query, k=5):
             results.append(metadata[i])
     return results
 
+# --- Helper: Build GPT Prompt ---
+# --- Helper: Build GPT Prompts (Two-Call Architecture) ---
 
-# -----------------------------
-# Prompt builders (two-call)
-# -----------------------------
 def build_analysis_prompt(question, sources, additional_instructions=""):
+
+    """
+    First call: ask the model to prepare an internal legal analysis
+    based on the enquiry and the retrieved source material.
+    This is NOT shown to the client.
+    """
+
     formatted_sources = []
     for src in sources:
+        # default to internal if not specified
         t = src.get("type", "internal")
         origin = src.get("source", "unknown")
-        formatted_sources.append(f"[{t.upper()} | {origin}]\n{src['content']}")
+
+        formatted_sources.append(
+            f"[{t.upper()} | {origin}]\n{src['content']}"
+        )
+
     context = "\n\n---\n\n".join(formatted_sources)
 
+    # ✅ Build optional extra instructions block (outside the f-string)
     extra_block = ""
     if additional_instructions and additional_instructions.strip():
         extra_block = f"""
@@ -279,6 +250,8 @@ ADDITIONAL INTERNAL DRAFTING INSTRUCTIONS (highest priority):
 You must follow these additional instructions unless they conflict with the Immigration Rules or the authoritative internal sources. If there is a conflict, explain it in the analysis.
 """
 
+    # ✅ Insert {extra_block} INSIDE the f-string, right after the enquiry
+    
     prompt = f"""
 You are an experienced UK immigration barrister preparing an internal legal analysis
 for a colleague at Richmond Chambers. This analysis is strictly for internal use only
@@ -344,13 +317,18 @@ Prospect's enquiry:
 
 SOURCE MATERIAL (internal knowledge centre – do not quote internal links or paragraph numbers):
 {context}
+
 """
     return prompt
 
-
 def build_email_prompt(question, analysis, additional_instructions=""):
+    """
+    Second call: convert the internal legal analysis into a polished, client-facing
+    'Initial Thoughts' email in the Richmond Chambers style.
+    """
     name = extract_prospect_name(question)
 
+    # ✅ Optional extra instructions block for the client email
     extra_block = ""
     if additional_instructions and additional_instructions.strip():
         extra_block = f"""
@@ -504,107 +482,109 @@ with st.form("query_form"):
 
 if submit and enquiry:
     with st.spinner("Searching documents and drafting response..."):
+        # Step 1: retrieve relevant documents
         results = search_index(enquiry)
 
+        # Optionally add uploaded document as an extra source
         extra_sources = []
         if uploaded_file is not None:
             extra_text = extract_text_from_uploaded_file(uploaded_file)
             if extra_text and extra_text.strip():
                 extra_sources.append({
                     "content": extra_text,
-                    "source": uploaded_file.name,
-                    "type": "uploaded"
+                    "source": uploaded_file.name
                 })
 
-        combined_sources = results + extra_sources
+        combined_sources = results + extra_sources   # ← FIXED indentation
 
+        # Step 2: first call – internal legal analysis
         analysis_prompt = build_analysis_prompt(enquiry, combined_sources, additional_instructions)
-        analysis_completion = client.chat.completions.create(
-            model="gpt-5.1",
-            messages=[{"role": "user", "content": analysis_prompt}],
-            temperature=0.2
+        analysis_completion = openai.chat.completions.create(
+        model="gpt-5.1",
+        messages=[{"role": "user", "content": analysis_prompt}],
+        temperature=0.2
         )
         internal_analysis = analysis_completion.choices[0].message.content
 
+        # Step 3: second call – client-facing email based on the analysis
         email_prompt = build_email_prompt(enquiry, internal_analysis, additional_instructions)
-        email_completion = client.chat.completions.create(
-            model="gpt-5.1",
-            messages=[{"role": "user", "content": email_prompt}],
-            temperature=0.3
+        email_completion = openai.chat.completions.create(
+        model="gpt-5.1",
+        messages=[{"role": "user", "content": email_prompt}],
+        temperature=0.3
         )
         reply = email_completion.choices[0].message.content
 
-    st.success("Response generated.")
+        st.success("Response generated.")
 
-    with st.expander("Internal Legal Analysis (not to be sent to prospect)", expanded=False):
-        st.markdown(internal_analysis)
+        # 🔹 INTERNAL ANALYSIS FIRST (on top)
+        with st.expander("Internal Legal Analysis (not to be sent to prospect)", expanded=False):
+            st.markdown(internal_analysis)
 
-    st.subheader("Draft Email to Prospect")
-    st.text_area("Draft Email", value=reply, height=600)
+        # 🔹 DRAFT EMAIL SECOND (underneath)
+        st.subheader("Draft Email to Prospect")
+        st.text_area("Draft Email", value=reply, height=600)
 
-    st.markdown(
-        """
-        ---  
-        **Professional Responsibility Statement**
+        st.markdown(
+    """
+    ---  
+    **Professional Responsibility Statement**
 
-        AI-generated content must not be relied upon without human review. Where such
-        content is used, the barrister is responsible for verifying and ensuring the accuracy
-        and legal soundness of that content. AI tools are used solely to support drafting and
-        research; they do not replace the barrister’s independent judgment, analysis, or duty
-        of care.
-        """,
-        unsafe_allow_html=False,
-    )
+    AI-generated content must not be relied upon without human review. Where such
+    content is used, the barrister is responsible for verifying and ensuring the accuracy
+    and legal soundness of that content. AI tools are used solely to support drafting and
+    research; they do not replace the barrister’s independent judgment, analysis, or duty
+    of care.
+    """,
+    unsafe_allow_html=False,
+)
 
-    md = MarkdownIt()
-    html_reply = md.render(reply)
+        # ✅ Convert Markdown reply to HTML for the copy button
+        md = MarkdownIt()
+        html_reply = md.render(reply)
 
-      # ✅ Convert Markdown reply to HTML for the copy button
-    md = MarkdownIt()
-    html_reply = md.render(reply)
+        components.html(
+            f"""
+            <style>
+            .copy-button {{
+                margin-top: 10px;
+                padding: 8px 16px;
+                background-color: #2e2e2e;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                transition: background-color 0.2s ease, transform 0.1s ease;
+            }}
+            .copy-button:hover {{
+                background-color: #4a4a4a;
+            }}
+            .copy-button:active {{
+                background-color: #3a3a3a;
+                transform: scale(0.98);
+            }}
+            </style>
 
-    components.html(
-        f"""
-        <style>
-        .copy-button {{
-            margin-top: 10px;
-            padding: 8px 16px;
-            background-color: #2e2e2e;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.2s ease, transform 0.1s ease;
-        }}
-        .copy-button:hover {{
-            background-color: #4a4a4a;
-        }}
-        .copy-button:active {{
-            background-color: #3a3a3a;
-            transform: scale(0.98);
-        }}
-        </style>
+            <button class="copy-button" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
 
-        <button class="copy-button" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+            <script>
+            async function copyToClipboard() {{
+                const htmlContent = `{html_reply.replace("`", "\\`")}`;
+                const plainText = `{reply.replace("`", "\\`")}`;
 
-        <script>
-        async function copyToClipboard() {{
-            const htmlContent = `{html_reply.replace("`", "\\`")}`;
-            const plainText = `{reply.replace("`", "\\`")}`;
+                const blobHtml = new Blob([htmlContent], {{ type: 'text/html' }});
+                const blobText = new Blob([plainText], {{ type: 'text/plain' }});
 
-            const blobHtml = new Blob([htmlContent], {{ type: 'text/html' }});
-            const blobText = new Blob([plainText], {{ type: 'text/plain' }});
+                const clipboardItem = new ClipboardItem({{
+                    'text/html': blobHtml,
+                    'text/plain': blobText
+                }});
 
-            const clipboardItem = new ClipboardItem({{
-                'text/html': blobHtml,
-                'text/plain': blobText
-            }});
-
-            await navigator.clipboard.write([clipboardItem]);
-            alert("Formatted text copied! Paste into Gmail or Google Docs to retain formatting.");
-        }}
-        </script>
-        """,
-        height=120,
-        scrolling=False
-    )
+                await navigator.clipboard.write([clipboardItem]);
+                alert("Formatted text copied! Paste into Gmail or Google Docs to retain formatting.");
+            }}
+            </script>
+            """,
+            height=120,
+            scrolling=False
+        )
