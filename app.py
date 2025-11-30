@@ -400,11 +400,11 @@ and objectives but not repeating the wording verbatim.
 
 **Initial Thoughts**
 
-This section must be prose only: no bullet points, no numbering, no sub-headings.
+This section must be prose only: no bullet points, no numbering.
 
 Provide a clear, narrative explanation of the immigration routes that may be relevant
 to the prospect’s circumstances, applying only the routes and reasoning contained in
-the internal analysis. Prioritise clear client-friendly explanation over technical structure.
+the internal analysis. Prioritise clear client-friendly explanation over technical structure. Use subtle transitions (“Turning then to…”, “On the facts as you describe them…”, “The point to watch is…”) rather than overt signposts.
 
 You should:
 - Summarise the key facts and immigration objectives.
@@ -414,6 +414,27 @@ You should:
 - Flag any strategic considerations (timing, switching, interaction with immigration history).
 - State where further information or documentation is needed before firm advice.
 - Gently encourage an initial consultation.
+
+Do not plan the section around headings. Instead, write the email first as continuous prose.
+Only after drafting, you MAY insert at most TWO short **bold sub-headings** if (and only if)
+there is a clear, natural break between distinct points that would benefit from signposting.
+
+Sub-headings must:
+- be formal in wording and consistent with barristers’ correspondence
+- be specific to the client’s circumstances (not generic)
+- be used sparingly: 0–2 total, often none
+- be brief (2–8 words), in bold, on their own line
+- function as gentle signposts, not a template
+
+Avoid any sense of a fixed checklist. Do not give each paragraph a label.
+Avoid formulaic headings such as “Key Requirements”, “Eligibility”, “Potential Issues”,
+“Next Steps”, or anything that reads like an internal memo.
+
+If you use a sub-heading, it should feel like something added lightly for the reader’s ease,
+not like a structural outline.
+
+Vary paragraph length and rhetorical flow as a human writer would.
+Do not mirror the internal analysis structure paragraph-by-paragraph.
 
 **How We Can Assist**
 
