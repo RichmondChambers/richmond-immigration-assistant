@@ -97,12 +97,6 @@ user_email = google_login()
 # Optionally show who is logged in (for debugging)
 # st.write(f"Signed in as: {user_email}")
 
-# --- Load FAISS Index and Metadata ---
-@st.cache_resource
-def load_index_and_metadata():
-    ...
-
-
 def format_for_email(response_text):
     """
     Cleans up the AI response so it's suitable for copying into an email.
@@ -125,17 +119,21 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# --- Load API Key securely ---
-openai.api_key = st.secrets["OPENAI_API_KEY"]
-
 # --- Load FAISS Index and Metadata ---
+def ensure_index_up_to_date():
+    """
+    Option A:
+    Always run Drive sync/rebuild on every rerun.
+    Keeps knowledge freshness correct even when loading is cached.
+    """
+    sync_drive_and_rebuild_index_if_needed()
+
 @st.cache_resource
 def load_index_and_metadata():
     """
     Ensure FAISS index is up to date, then load index, metadata,
     and read last rebuilt timestamp for UI display.
     """
-    sync_drive_and_rebuild_index_if_needed()
 
     index = faiss.read_index(INDEX_FILE)
     with open(METADATA_FILE, "rb") as f:
@@ -151,6 +149,7 @@ def load_index_and_metadata():
 
     return index, metadata, last_rebuilt
 
+ensure_index_up_to_date()
 index, metadata, last_rebuilt = load_index_and_metadata()
 
 # --- Helper: Extract Text From Uploaded File ---
