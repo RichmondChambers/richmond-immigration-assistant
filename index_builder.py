@@ -11,8 +11,6 @@ import faiss
 import docx
 import PyPDF2
 
-from openai import OpenAI
-
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
@@ -195,27 +193,49 @@ def split_into_chunks(text: str, max_chars: int = 1500, overlap: int = 200):
     return chunks
 
 
-def embed_texts(texts, model="text-embedding-3-small", batch_size=16) -> np.ndarray:
+def embed_texts(
+    texts,
+    model="text-embedding-3-small",
+    batch_size=16,
+    max_retries=6
+) -> np.ndarray:
     """
     Get embeddings for a list of texts using OpenAI embeddings API,
-    with basic rate-limit handling.
+    retrying only transient failures and failing fast on real config errors.
     """
     client = get_openai_client()
     all_embeddings = []
+
     for i in range(0, len(texts), batch_size):
         batch = texts[i : i + batch_size]
 
+        attempts = 0
         while True:
             try:
                 response = client.embeddings.create(
                     input=batch,
                     model=model,
+                    timeout=30,
                 )
-                break
-            except Exception as e:
-                wait_seconds = 5
-                print(f"[index_builder] Embedding error, sleeping {wait_seconds}s and retrying: {e}")
+                break  # success
+
+            except (RateLimitError, APIConnectionError, APITimeoutError) as e:
+                attempts += 1
+                if attempts > max_retries:
+                    raise RuntimeError(
+                        f"OpenAI embeddings failed after {max_retries} retries. Last error: {e}"
+                    )
+                wait_seconds = 5 * attempts
+                print(
+                    f"[index_builder] Transient error, retry {attempts}/{max_retries} in {wait_seconds}s: {e}"
+                )
                 time.sleep(wait_seconds)
+
+            except Exception as e:
+                # Non-transient errors should stop the rebuild immediately
+                raise RuntimeError(
+                    f"OpenAI embeddings failed with a non-retryable error: {e}"
+                )
 
         for item in response.data:
             all_embeddings.append(item.embedding)
