@@ -19,13 +19,15 @@ from googleapiclient.http import MediaIoBaseDownload
 import streamlit as st
 
 # 🔹 Folder ID of your UK-Immigration-Knowledge folder in Drive
-# You already had this ID in your previous code:
 DRIVE_FOLDER_ID = "13J-DiERhtS1VWgF2GtZ1wnMfbUzkq6-G"
 
 # 🔹 Local files the app uses
 INDEX_FILE = "faiss_index.index"
 METADATA_FILE = "metadata.pkl"
-STATE_FILE = "drive_index_state.json"  # to detect changes (optional)
+STATE_FILE = "drive_index_state.json"  # to detect changes + store timestamps
+
+# ✅ Check Drive at most once per day (global cooldown)
+CHECK_COOLDOWN_SECONDS = 24 * 60 * 60  # 1 day
 
 
 def get_drive_service():
@@ -48,7 +50,6 @@ def list_files_recursive(folder_id: str, service) -> List[Dict]:
     """
     files: List[Dict] = []
 
-    # First, list direct children of this folder
     page_token = None
     while True:
         response = service.files().list(
@@ -60,7 +61,6 @@ def list_files_recursive(folder_id: str, service) -> List[Dict]:
         for f in response.get("files", []):
             mime_type = f.get("mimeType", "")
             if mime_type == "application/vnd.google-apps.folder":
-                # Recurse into sub-folder
                 files.extend(list_files_recursive(f["id"], service))
             else:
                 files.append(f)
@@ -112,7 +112,6 @@ def download_file_bytes(service, file):
     mime_type = file.get("mimeType", "")
 
     if mime_type == "application/vnd.google-apps.document":
-        # Google Docs → export as DOCX
         request = service.files().export_media(
             fileId=file_id,
             mimeType="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -138,32 +137,26 @@ def extract_text_from_bytes(file_bytes: bytes, mime_type: str, file_name: str) -
     """
     name_lower = file_name.lower()
 
-    # DOCX (including exported Google Docs)
     if (
-        mime_type
-        == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        mime_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         or name_lower.endswith(".docx")
     ):
         doc = docx.Document(io.BytesIO(file_bytes))
         return "\n".join(p.text for p in doc.paragraphs)
 
-    # PDF
     if mime_type == "application/pdf" or name_lower.endswith(".pdf"):
         reader = PyPDF2.PdfReader(io.BytesIO(file_bytes))
         pages = []
         for page in reader.pages:
-            text = page.extract_text() or ""
-            pages.append(text)
+            pages.append(page.extract_text() or "")
         return "\n\n".join(pages)
 
-    # Plain text
     if mime_type.startswith("text/") or name_lower.endswith(".txt") or name_lower.endswith(".md"):
         try:
             return file_bytes.decode("utf-8")
         except UnicodeDecodeError:
             return file_bytes.decode("latin-1", errors="ignore")
 
-    # Fallback
     try:
         return file_bytes.decode("utf-8")
     except UnicodeDecodeError:
@@ -184,8 +177,7 @@ def split_into_chunks(text: str, max_chars: int = 1500, overlap: int = 200):
 
     while start < length:
         end = start + max_chars
-        chunk = text[start:end]
-        chunks.append(chunk)
+        chunks.append(text[start:end])
         start = end - overlap
         if start < 0:
             start = 0
@@ -197,9 +189,6 @@ def embed_texts(texts, model="text-embedding-3-small", batch_size=16) -> np.ndar
     """
     Get embeddings for a list of texts using OpenAI embeddings API,
     with basic rate-limit handling.
-
-    - Uses smaller batches (default 16) to reduce tokens per request.
-    - If a RateLimitError is hit, waits a few seconds and retries.
     """
     all_embeddings = []
     for i in range(0, len(texts), batch_size):
@@ -211,11 +200,12 @@ def embed_texts(texts, model="text-embedding-3-small", batch_size=16) -> np.ndar
                     input=batch,
                     model=model,
                 )
-                break  # success, exit the retry loop
+                break
             except openai.RateLimitError as e:
-                # Simple backoff: wait then retry the same batch
                 wait_seconds = 5
-                print(f"[index_builder] Rate limit hit, sleeping {wait_seconds}s and retrying batch {i // batch_size}: {e}")
+                print(
+                    f"[index_builder] Rate limit hit, sleeping {wait_seconds}s and retrying batch {i // batch_size}: {e}"
+                )
                 time.sleep(wait_seconds)
 
         for item in response.data:
@@ -224,13 +214,11 @@ def embed_texts(texts, model="text-embedding-3-small", batch_size=16) -> np.ndar
     return np.array(all_embeddings, dtype=np.float32)
 
 
-
 def rebuild_index_from_drive(files: List[Dict]):
     """
     Download files, extract text, chunk, embed, and rebuild FAISS + metadata.
     """
     service = get_drive_service()
-
     all_chunks = []
     metadata = []
 
@@ -239,22 +227,17 @@ def rebuild_index_from_drive(files: List[Dict]):
         file_name = file.get("name", "unnamed")
         mime_type = file.get("mimeType", "")
 
-        # Skip if it's a folder (shouldn't happen here, but just in case)
         if mime_type == "application/vnd.google-apps.folder":
             continue
 
-        # 1. Download file bytes
         file_bytes, effective_mime = download_file_bytes(service, file)
 
-        # 2. Extract text
         text = extract_text_from_bytes(file_bytes, effective_mime, file_name)
         if not text.strip():
             continue
 
-        # 3. Split into chunks
         chunks = split_into_chunks(text)
 
-        # 4. Add to master list with metadata
         for idx, chunk in enumerate(chunks):
             all_chunks.append(chunk)
             metadata.append(
@@ -267,46 +250,69 @@ def rebuild_index_from_drive(files: List[Dict]):
             )
 
     if not all_chunks:
-        # No text → create an empty index
-        dim = 1536  # embedding dimension for text-embedding-3-small
+        dim = 1536  # embedding dim for text-embedding-3-small
         index = faiss.IndexFlatL2(dim)
         faiss.write_index(index, INDEX_FILE)
         with open(METADATA_FILE, "wb") as f:
             pickle.dump([], f)
         return
 
-    # 5. Embed chunks
     embeddings = embed_texts(all_chunks, model="text-embedding-3-small")
 
-    # 6. Build FAISS index
     dim = embeddings.shape[1]
     index = faiss.IndexFlatL2(dim)
     index.add(embeddings)
 
-    # 7. Save index and metadata
     faiss.write_index(index, INDEX_FILE)
     with open(METADATA_FILE, "wb") as f:
-            pickle.dump(metadata, f)
+        pickle.dump(metadata, f)
 
 
 def sync_drive_and_rebuild_index_if_needed():
     """
     Check Drive for new/updated files; if changes are detected,
     rebuild FAISS index and metadata from scratch.
+
+    ✅ Debounced: will not check Drive more than once per day globally.
     """
-    files = list_drive_files()
     previous_state = load_previous_state()
+
+    # ---- DAILY COOLDOWN ----
+    last_checked = previous_state.get("last_checked")
+    if last_checked:
+        try:
+            last_checked_dt = datetime.datetime.fromisoformat(last_checked.replace("Z", ""))
+            age_seconds = (datetime.datetime.utcnow() - last_checked_dt).total_seconds()
+            if age_seconds < CHECK_COOLDOWN_SECONDS:
+                # Too soon to re-check Drive
+                return False
+        except Exception:
+            # If parsing fails, fall through and re-check Drive
+            pass
+    # ------------------------
+
+    # Allowed to check Drive now
+    files = list_drive_files()
     changed, current_state = have_files_changed(files, previous_state)
 
     if changed or not os.path.exists(INDEX_FILE) or not os.path.exists(METADATA_FILE):
         rebuild_index_from_drive(files)
 
-        # Save new state + timestamp of rebuild
-        save_state({
-            "files": current_state,
-            "last_rebuilt": datetime.datetime.utcnow().isoformat() + "Z"
-        })
+        save_state(
+            {
+                "files": current_state,
+                "last_rebuilt": datetime.datetime.utcnow().isoformat() + "Z",
+                "last_checked": datetime.datetime.utcnow().isoformat() + "Z",
+            }
+        )
         return True
 
+    # No rebuild, but record that we checked today
+    save_state(
+        {
+            "files": previous_state.get("files", {}),
+            "last_rebuilt": previous_state.get("last_rebuilt"),
+            "last_checked": datetime.datetime.utcnow().isoformat() + "Z",
+        }
+    )
     return False
-
