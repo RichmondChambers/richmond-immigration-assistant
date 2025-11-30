@@ -16,6 +16,7 @@ from openai import OpenAI
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
+from openai import OpenAI, RateLimitError, APIConnectionError, APITimeoutError
 
 import streamlit as st
 
@@ -201,7 +202,6 @@ def embed_texts(texts, model="text-embedding-3-small", batch_size=16) -> np.ndar
     """
     client = get_openai_client()
     all_embeddings = []
-
     for i in range(0, len(texts), batch_size):
         batch = texts[i : i + batch_size]
 
@@ -213,7 +213,6 @@ def embed_texts(texts, model="text-embedding-3-small", batch_size=16) -> np.ndar
                 )
                 break
             except Exception as e:
-                # Handle rate limits / transient errors generically
                 wait_seconds = 5
                 print(f"[index_builder] Embedding error, sleeping {wait_seconds}s and retrying: {e}")
                 time.sleep(wait_seconds)
