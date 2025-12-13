@@ -11,6 +11,174 @@ import streamlit.components.v1 as components
 from markdown_it import MarkdownIt
 from index_builder import sync_drive_and_rebuild_index_if_needed, INDEX_FILE, METADATA_FILE
 
+# =========================
+# Feedback / corrections files
+# =========================
+
+EMAIL_CORRECTIONS_FILE = "email_corrections.jsonl"
+EMAIL_FEEDBACK_LOG_FILE = "email_feedback_log.jsonl"
+
+
+# =========================
+# Feedback / corrections helpers
+# =========================
+
+def append_jsonl(path, record):
+    """
+    Append a single JSON record to a .jsonl file.
+    """
+    try:
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except Exception as e:
+        st.warning(f"Could not write to {path}: {e}")
+
+
+def load_email_corrections(path=EMAIL_CORRECTIONS_FILE):
+    """
+    Load all enquiry-specific corrections from a JSONL file.
+    Each record is expected to contain at least:
+      - enquiry_hint: str (lowercased substring / description of enquiry)
+      - instruction: str (concise override instruction)
+    """
+    corrections = []
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    corrections.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+    except FileNotFoundError:
+        # No corrections yet
+        pass
+    except Exception as e:
+        st.warning(f"Could not load corrections from {path}: {e}")
+    return corrections
+
+
+def get_applicable_correction_prompts(enquiry_text):
+    """
+    Return a list of correction instructions whose enquiry_hint appears
+    in the enquiry text (simple substring match).
+    """
+    if not enquiry_text or not enquiry_text.strip():
+        return []
+
+    enquiry_lower = enquiry_text.lower()
+    prompts = []
+    for entry in load_email_corrections():
+        hint = str(entry.get("enquiry_hint", "")).lower().strip()
+        instruction = str(entry.get("instruction") or entry.get("prompt") or "").strip()
+        if hint and instruction and hint in enquiry_lower:
+            prompts.append(instruction)
+    return prompts
+
+
+def summarise_feedback_to_instruction(enquiry_text, feedback_text):
+    """
+    Use the OpenAI API to compress raw feedback into a single, precise
+    instruction (under ~40 words) that corrects the error for similar enquiries.
+    Falls back to the original feedback if anything goes wrong.
+    """
+    enquiry_clean = (enquiry_text or "").strip()
+    feedback_clean = (feedback_text or "").strip()
+
+    if not feedback_clean:
+        return ""
+
+    try:
+        completion = openai.chat.completions.create(
+            model="gpt-5.1",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a UK immigration barrister. Rewrite the user's feedback into a single, precise instruction "
+                        "that corrects a recurring legal error in an initial-thoughts email. "
+                        "The sentence must be under 40 words, clearly route- or scenario-specific, "
+                        "and phrased as a 'must' or 'must not' rule."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"PROSPECT ENQUIRY (summary context):\n{enquiry_clean}\n\n"
+                        f"FEEDBACK (legal error description):\n{feedback_clean}"
+                    ),
+                },
+            ],
+            temperature=0.0,
+        )
+        instruction = (completion.choices[0].message.content or "").strip()
+        if not instruction:
+            instruction = feedback_clean
+        return instruction
+    except Exception as e:
+        st.warning(f"Could not summarise feedback into an instruction: {e}")
+        return feedback_clean
+
+
+def build_email_correction_entry(enquiry_text, feedback_text):
+    """
+    Turn raw feedback into an enquiry-scoped correction entry, using the model
+    to create a concise one-line instruction.
+    """
+    enquiry_hint_source = (enquiry_text or "").strip()
+    feedback_clean = (feedback_text or "").strip()
+
+    if not enquiry_hint_source or not feedback_clean:
+        return None
+
+    # Use first line (or first ~120 chars) as a matching hint
+    first_line = enquiry_hint_source.splitlines()[0].strip()
+    if len(first_line) > 120:
+        first_line = first_line[:117] + "..."
+    enquiry_hint_normalised = first_line.lower()
+
+    concise_instruction = summarise_feedback_to_instruction(enquiry_hint_source, feedback_clean)
+    concise_instruction = concise_instruction.strip()
+    if not concise_instruction:
+        return None
+
+    return {
+        "enquiry_hint": enquiry_hint_normalised,
+        "instruction": concise_instruction,
+    }
+
+
+def log_email_feedback_and_add_correction(
+    user_email,
+    enquiry_text,
+    internal_analysis,
+    email_reply,
+    additional_instructions,
+    feedback_text,
+):
+    """
+    1. Log full feedback (for audit) to EMAIL_FEEDBACK_LOG_FILE.
+    2. Add a lightweight enquiry-specific correction entry to EMAIL_CORRECTIONS_FILE
+       so future runs for similar enquiries pick up the override.
+    """
+    # 1. Full feedback log
+    feedback_record = {
+        "user_email": user_email,
+        "enquiry": enquiry_text,
+        "internal_analysis": internal_analysis,
+        "email_reply": email_reply,
+        "additional_instructions": additional_instructions,
+        "feedback": feedback_text,
+    }
+    append_jsonl(EMAIL_FEEDBACK_LOG_FILE, feedback_record)
+
+    # 2. Optional correction entry
+    correction_entry = build_email_correction_entry(enquiry_text, feedback_text)
+    if correction_entry is not None:
+        append_jsonl(EMAIL_CORRECTIONS_FILE, correction_entry)
+
 def google_login():
     """
     Require the user to sign in with a Google account and restrict access
@@ -328,16 +496,37 @@ def build_email_prompt(question, analysis, additional_instructions=""):
     """
     name = extract_prospect_name(question)
 
-    # ✅ Optional extra instructions block for the client email
-    extra_block = ""
+    # Route/enquiry-specific corrections for client email
+    correction_prompts = get_applicable_correction_prompts(question)
+
+    correction_block = ""
+    if correction_prompts:
+        correction_text = "ENQUIRY-SPECIFIC CORRECTIONS / OVERRIDES (from prior feedback):\n"
+        for cp in correction_prompts:
+            correction_text += f"- {cp}\n"
+        correction_text += (
+            "\nYou must treat these corrections as overriding your general knowledge for similar enquiries. "
+            "However, if they clearly conflict with the INTERNAL ANALYSIS, follow the INTERNAL ANALYSIS and "
+            "do not introduce the conflicting point into the client email."
+        )
+        correction_block = correction_text
+
+    extra_block_parts = []
+    if correction_block:
+        extra_block_parts.append(correction_block)
+
     if additional_instructions and additional_instructions.strip():
-        extra_block = f"""
+        extra_block_parts.append(
+            f"""
 ADDITIONAL CLIENT-EMAIL DRAFTING INSTRUCTIONS (highest priority):
 \"\"\"{additional_instructions.strip()}\"\"\"
 
 Follow these instructions unless they conflict with the internal analysis.
 If they conflict, follow the internal analysis and gently note the limitation in the email.
-"""
+""".strip()
+        )
+
+    extra_block = "\n\n".join(extra_block_parts)
 
     prompt = f"""
 You are an experienced UK immigration barrister drafting a client-facing initial response email
@@ -508,83 +697,142 @@ if submit and enquiry:
 
         # Step 3: second call – client-facing email based on the analysis
         email_prompt = build_email_prompt(enquiry, internal_analysis, additional_instructions)
-        email_completion = openai.chat.completions.create(
-        model="gpt-5.1",
-        messages=[{"role": "user", "content": email_prompt}],
-        temperature=0.3
+                email_completion = openai.chat.completions.create(
+            model="gpt-5.1",
+            messages=[{"role": "user", "content": email_prompt}],
+            temperature=0.3
         )
         reply = email_completion.choices[0].message.content
 
+        # Save latest run into session_state for feedback and copy button
+        st.session_state["enquiry"] = enquiry
+        st.session_state["internal_analysis"] = internal_analysis
+        st.session_state["email_reply"] = reply
+        st.session_state["additional_instructions"] = additional_instructions or ""
+
         st.success("Response generated.")
 
-        # 🔹 INTERNAL ANALYSIS FIRST (on top)
-        with st.expander("Internal Legal Analysis (not to be sent to prospect)", expanded=False):
-            st.markdown(internal_analysis)
+# =========================
+# Display latest result + copy button + feedback
+# =========================
 
-        # 🔹 DRAFT EMAIL SECOND (underneath)
-        st.subheader("Draft Email to Prospect")
-        st.text_area("Draft Email", value=reply, height=600)
+if "email_reply" in st.session_state and st.session_state["email_reply"].strip():
+    internal_analysis = st.session_state["internal_analysis"]
+    reply = st.session_state["email_reply"]
 
-        st.markdown(
-    """
-    ---  
-    **Professional Responsibility Statement**
+    # INTERNAL ANALYSIS (expander)
+    with st.expander("Internal Legal Analysis (not to be sent to prospect)", expanded=False):
+        st.markdown(internal_analysis)
 
-    AI-generated content must not be relied upon without human review. Where such
-    content is used, the barrister is responsible for verifying and ensuring the accuracy
-    and legal soundness of that content. AI tools are used solely to support drafting and
-    research; they do not replace the barrister’s independent judgment, analysis, or duty
-    of care.
-    """,
-    unsafe_allow_html=False,
-)
+    # DRAFT EMAIL
+    st.subheader("Draft Email to Prospect")
+    st.text_area("Draft Email", value=reply, height=600)
 
-        # ✅ Convert Markdown reply to HTML for the copy button
-        md = MarkdownIt()
-        html_reply = md.render(reply)
+    st.markdown(
+        """
+        ---  
+        **Professional Responsibility Statement**
 
-        components.html(
-            f"""
-            <style>
-            .copy-button {{
-                margin-top: 10px;
-                padding: 8px 16px;
-                background-color: #2e2e2e;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                cursor: pointer;
-                transition: background-color 0.2s ease, transform 0.1s ease;
-            }}
-            .copy-button:hover {{
-                background-color: #4a4a4a;
-            }}
-            .copy-button:active {{
-                background-color: #3a3a3a;
-                transform: scale(0.98);
-            }}
-            </style>
+        AI-generated content must not be relied upon without human review. Where such
+        content is used, the barrister is responsible for verifying and ensuring the accuracy
+        and legal soundness of that content. AI tools are used solely to support drafting and
+        research; they do not replace the barrister’s independent judgment, analysis, or duty
+        of care.
+        """,
+        unsafe_allow_html=False,
+    )
 
-            <button class="copy-button" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+    # Convert Markdown reply to HTML for the copy button
+    md = MarkdownIt()
+    html_reply = md.render(reply)
 
-            <script>
-            async function copyToClipboard() {{
-                const htmlContent = `{html_reply.replace("`", "\\`")}`;
-                const plainText = `{reply.replace("`", "\\`")}`;
+    components.html(
+        f"""
+        <style>
+        .copy-button {{
+            margin-top: 10px;
+            padding: 8px 16px;
+            background-color: #2e2e2e;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }}
+        .copy-button:hover {{
+            background-color: #4a4a4a;
+        }}
+        .copy-button:active {{
+            background-color: #3a3a3a;
+            transform: scale(0.98);
+        }}
+        </style>
 
-                const blobHtml = new Blob([htmlContent], {{ type: 'text/html' }});
-                const blobText = new Blob([plainText], {{ type: 'text/plain' }});
+        <button class="copy-button" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
 
-                const clipboardItem = new ClipboardItem({{
-                    'text/html': blobHtml,
-                    'text/plain': blobText
-                }});
+        <script>
+        async function copyToClipboard() {{
+            const htmlContent = `{html_reply.replace("`", "\\`")}`;
+            const plainText = `{reply.replace("`", "\\`")}`;
 
-                await navigator.clipboard.write([clipboardItem]);
-                alert("Formatted text copied! Paste into Gmail or Google Docs to retain formatting.");
-            }}
-            </script>
-            """,
-            height=120,
-            scrolling=False
-        )
+            const blobHtml = new Blob([htmlContent], {{ type: 'text/html' }});
+            const blobText = new Blob([plainText], {{ type: 'text/plain' }});
+
+            const clipboardItem = new ClipboardItem({{
+                'text/html': blobHtml,
+                'text/plain': blobText
+            }});
+
+            await navigator.clipboard.write([clipboardItem]);
+            alert("Formatted text copied! Paste into Gmail or Google Docs to retain formatting.");
+        }}
+        </script>
+        """,
+        height=120,
+        scrolling=False
+    )
+
+    # =========================
+    # Feedback UI (only after response generated)
+    # =========================
+
+    st.markdown("---")
+    st.subheader("Report a legal error in this response")
+
+    st.write(
+        "If you spot any incorrect statement of law, route eligibility, requirements or policy, "
+        "please describe the issue and the correct position below. Your feedback will be logged "
+        "and used to refine future initial-thoughts emails for similar enquiries."
+    )
+
+    feedback_text = st.text_area(
+        "Describe the legal issue and the correct position:",
+        height=160,
+        placeholder=(
+            "Example:\n"
+            "For Tier 1 (Investor) extension enquiries, there is no maintenance funds requirement. "
+            "Initial-thoughts emails for this route must not state that maintenance funds are required."
+        ),
+        key="email_feedback_text",
+    )
+
+    if st.button("Submit feedback on this response"):
+        if feedback_text.strip():
+            enquiry_state = st.session_state.get("enquiry", "")
+            additional_state = st.session_state.get("additional_instructions", "")
+
+            log_email_feedback_and_add_correction(
+                user_email=user_email,
+                enquiry_text=enquiry_state,
+                internal_analysis=internal_analysis,
+                email_reply=reply,
+                additional_instructions=additional_state,
+                feedback_text=feedback_text,
+            )
+            st.success(
+                "Thank you. Your feedback has been recorded and an enquiry-specific override has been added "
+                "for future initial-thoughts emails for similar enquiries."
+            )
+            st.session_state["email_feedback_text"] = ""
+        else:
+            st.warning("Please enter some feedback before submitting.")
