@@ -5,6 +5,7 @@ import pickle
 import time
 import datetime
 from typing import List, Dict
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import faiss
@@ -28,6 +29,26 @@ STATE_FILE = "drive_index_state.json"  # to detect changes + store timestamps
 
 # ✅ Check Drive at most once per day (global cooldown)
 CHECK_COOLDOWN_SECONDS = 24 * 60 * 60  # 1 day
+
+
+def is_within_rebuild_window(now_utc=None) -> bool:
+    """Return True when the current UK local time is inside the overnight window."""
+
+    if now_utc is None:
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+
+    london_tz = ZoneInfo(REBUILD_WINDOW_TZ)
+    now_local = now_utc.astimezone(london_tz)
+    now_time = now_local.time()
+
+    # Simple window that does not cross midnight (01:00-05:00 UK)
+    return REBUILD_WINDOW_START <= now_time <= REBUILD_WINDOW_END
+
+# ✅ Only rebuild/check Drive during the overnight window (UK time) so
+#    daytime users are never blocked by a long refresh
+REBUILD_WINDOW_TZ = "Europe/London"
+REBUILD_WINDOW_START = datetime.time(hour=1, minute=0)  # 01:00 UK
+REBUILD_WINDOW_END = datetime.time(hour=5, minute=0)  # 05:00 UK
 
 
 def get_openai_client() -> OpenAI:
@@ -297,12 +318,19 @@ def rebuild_index_from_drive(files: List[Dict]):
         pickle.dump(metadata, f)
 
 
-def sync_drive_and_rebuild_index_if_needed():
+def sync_drive_and_rebuild_index_if_needed(
+    *,
+    respect_cooldown: bool = True,
+    respect_rebuild_window: bool = True,
+):
     """
     Check Drive for new/updated files; if changes are detected,
     rebuild FAISS index and metadata from scratch.
 
     ✅ Debounced: will not check Drive more than once per day globally.
+    ✅ Respects the overnight rebuild window (UK time) so daytime users
+       are never blocked. Missing artifacts will still trigger a rebuild
+       immediately so the app can start.
 
     Returns:
         True  -> rebuilt now
@@ -310,16 +338,28 @@ def sync_drive_and_rebuild_index_if_needed():
     """
     previous_state = load_previous_state()
 
+    # ---- REBUILD WINDOW GUARD (skip daytime checks) ----
+    artifacts_missing = not os.path.exists(INDEX_FILE) or not os.path.exists(
+        METADATA_FILE
+    )
+    if respect_rebuild_window and not artifacts_missing:
+        if not is_within_rebuild_window():
+            return False
+    # ----------------------------------------------------
+
     # ---- DAILY COOLDOWN ----
-    last_checked = previous_state.get("last_checked")
-    if last_checked:
-        try:
-            last_checked_dt = datetime.datetime.fromisoformat(last_checked.replace("Z", ""))
-            age_seconds = (datetime.datetime.utcnow() - last_checked_dt).total_seconds()
-            if age_seconds < CHECK_COOLDOWN_SECONDS:
-                return False
-        except Exception:
-            pass
+    if respect_cooldown:
+        last_checked = previous_state.get("last_checked")
+        if last_checked:
+            try:
+                last_checked_dt = datetime.datetime.fromisoformat(
+                    last_checked.replace("Z", "")
+                )
+                age_seconds = (datetime.datetime.utcnow() - last_checked_dt).total_seconds()
+                if age_seconds < CHECK_COOLDOWN_SECONDS:
+                    return False
+            except Exception:
+                pass
     # ------------------------
 
     files = list_drive_files()
