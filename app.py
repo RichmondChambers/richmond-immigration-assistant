@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import openai
 import faiss
@@ -298,28 +299,33 @@ openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # --- Load FAISS Index and Metadata ---
 @st.cache_resource
-def load_index_and_metadata():
+def load_index_and_metadata(index_mtime: float, metadata_mtime: float):
     """
-    Ensure FAISS index is up to date, then load index, metadata,
-    and read last rebuilt timestamp for UI display.
+    Load the FAISS index and metadata from disk.
+    Cache is busted when the underlying files change.
     """
-    sync_drive_and_rebuild_index_if_needed()
-
     index = faiss.read_index(INDEX_FILE)
     with open(METADATA_FILE, "rb") as f:
         metadata = pickle.load(f)
+    return index, metadata
 
-    # Read the timestamp from drive_index_state.json
+
+def get_last_rebuilt_timestamp() -> str:
+    """Read the last rebuilt timestamp from drive_index_state.json for UI display."""
     try:
         with open("drive_index_state.json", "r") as f:
             state = json.load(f)
-            last_rebuilt = state.get("last_rebuilt", "Unknown")
+            return state.get("last_rebuilt", "Unknown")
     except Exception:
-        last_rebuilt = "Unknown"
+        return "Unknown"
 
-    return index, metadata, last_rebuilt
 
-index, metadata, last_rebuilt = load_index_and_metadata()
+sync_drive_and_rebuild_index_if_needed()
+
+index_mtime = os.path.getmtime(INDEX_FILE)
+metadata_mtime = os.path.getmtime(METADATA_FILE)
+index, metadata = load_index_and_metadata(index_mtime, metadata_mtime)
+last_rebuilt = get_last_rebuilt_timestamp()
 
 # --- Helper: Extract Text From Uploaded File ---
 def extract_text_from_uploaded_file(uploaded_file):
