@@ -191,9 +191,10 @@ def google_login():
         return st.session_state["user_email"]
 
     # 2. Check if Google has redirected back with a ?code=... parameter
-    params = st.experimental_get_query_params()
+    params = st.query_params
     if "code" in params:
-        code = params["code"][0]
+        code_param = params.get("code")
+        code = code_param[0] if isinstance(code_param, list) else code_param
 
         # Exchange the code for tokens
         token_response = requests.post(
@@ -811,18 +812,20 @@ if "email_reply" in st.session_state and st.session_state["email_reply"].strip()
         "and used to refine future initial-thoughts emails for similar enquiries."
     )
 
-    feedback_text = st.text_area(
-        "Describe the legal issue and the correct position:",
-        height=160,
-        placeholder=(
-            "Example:\n"
-            "For Tier 1 (Investor) extension enquiries, there is no maintenance funds requirement. "
-            "Initial-thoughts emails for this route must not state that maintenance funds are required."
-        ),
-        key="email_feedback_text",
-    )
+    with st.form("email_feedback_form", clear_on_submit=True):
+        feedback_text = st.text_area(
+            "Describe the legal issue and the correct position:",
+            height=160,
+            placeholder=(
+                "Example:\n"
+                "For Tier 1 (Investor) extension enquiries, there is no maintenance funds requirement. "
+                "Initial-thoughts emails for this route must not state that maintenance funds are required."
+            ),
+            key="email_feedback_text",
+        )
+        submitted = st.form_submit_button("Submit feedback on this response")
 
-    if st.button("Submit feedback on this response"):
+    if submitted:
         if feedback_text.strip():
             enquiry_state = st.session_state.get("enquiry", "")
             additional_state = st.session_state.get("additional_instructions", "")
@@ -839,6 +842,5 @@ if "email_reply" in st.session_state and st.session_state["email_reply"].strip()
                 "Thank you. Your feedback has been recorded and an enquiry-specific override has been added "
                 "for future initial-thoughts emails for similar enquiries."
             )
-            st.session_state["email_feedback_text"] = ""
         else:
             st.warning("Please enter some feedback before submitting.")
