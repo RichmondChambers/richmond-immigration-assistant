@@ -1,4 +1,5 @@
 import os
+import datetime
 import streamlit as st
 import openai
 import faiss
@@ -311,13 +312,34 @@ def load_index_and_metadata(index_mtime: float, metadata_mtime: float):
     return index, metadata
 
 
+def format_rebuild_timestamp(timestamp: datetime.datetime) -> str:
+    """Format a rebuild timestamp for UI display (UTC)."""
+    return timestamp.astimezone(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+
 def get_last_rebuilt_timestamp() -> str:
-    """Read the last rebuilt timestamp from drive_index_state.json for UI display."""
+    """Read the last rebuilt timestamp for UI display, falling back to FAISS mtime."""
+    last_rebuilt = None
     try:
         with open("drive_index_state.json", "r") as f:
             state = json.load(f)
-            return state.get("last_rebuilt", "Unknown")
+            last_rebuilt = state.get("last_rebuilt")
     except Exception:
+        last_rebuilt = None
+
+    if last_rebuilt:
+        try:
+            parsed = datetime.datetime.fromisoformat(last_rebuilt.replace("Z", "+00:00"))
+            return format_rebuild_timestamp(parsed)
+        except ValueError:
+            return last_rebuilt
+
+    try:
+        index_mtime = os.path.getmtime(INDEX_FILE)
+        return format_rebuild_timestamp(
+            datetime.datetime.fromtimestamp(index_mtime, tz=datetime.timezone.utc)
+        )
+    except OSError:
         return "Unknown"
 
 
