@@ -680,10 +680,11 @@ st.markdown(
 
 st.markdown("Paste a new enquiry below to generate a first draft of your initial thoughts email. Additional instructions may be added to refine the response.")
 
-uploaded_file = st.file_uploader(
-    "Optional: upload a document to include in the analysis.",
+uploaded_files = st.file_uploader(
+    "Optional: upload up to 3 documents to include in the analysis.",
     type=["pdf", "txt", "docx"],
-    help="For example: a refusal letter, specific guidance extract or blog post."
+    help="For example: refusal letters, specific guidance extracts or blog posts.",
+    accept_multiple_files=True,
 )
 
 with st.form("query_form"):
@@ -703,9 +704,13 @@ if submit and enquiry:
         # Step 1: retrieve relevant documents
         results = search_index(enquiry)
 
-        # Optionally add uploaded document as an extra source
+        # Optionally add uploaded documents as extra sources
         extra_sources = []
-        if uploaded_file is not None:
+        files_to_process = uploaded_files[:3] if uploaded_files else []
+        if uploaded_files and len(uploaded_files) > 3:
+            st.warning("Only the first 3 uploaded documents were included in the analysis.")
+
+        for uploaded_file in files_to_process:
             extra_text = extract_text_from_uploaded_file(uploaded_file)
             if extra_text and extra_text.strip():
                 extra_sources.append({
@@ -748,6 +753,7 @@ if submit and enquiry:
 if "email_reply" in st.session_state and st.session_state["email_reply"].strip():
     internal_analysis = st.session_state["internal_analysis"]
     reply = st.session_state["email_reply"]
+    safe_reply = reply.replace("`", "\\`")
 
     # INTERNAL ANALYSIS (expander)
     with st.expander("Internal Legal Analysis (not to be sent to prospect)", expanded=False):
@@ -774,6 +780,7 @@ if "email_reply" in st.session_state and st.session_state["email_reply"].strip()
     # Convert Markdown reply to HTML for the copy button
     md = MarkdownIt()
     html_reply = md.render(reply)
+    safe_html_reply = html_reply.replace("`", "\\`")
 
     components.html(
         f"""
@@ -801,8 +808,8 @@ if "email_reply" in st.session_state and st.session_state["email_reply"].strip()
 
         <script>
         async function copyToClipboard() {{
-            const htmlContent = `{html_reply.replace("`", "\\`")}`;
-            const plainText = `{reply.replace("`", "\\`")}`;
+            const htmlContent = `{safe_html_reply}`;
+            const plainText = `{safe_reply}`;
 
             const blobHtml = new Blob([htmlContent], {{ type: 'text/html' }});
             const blobText = new Blob([plainText], {{ type: 'text/plain' }});
